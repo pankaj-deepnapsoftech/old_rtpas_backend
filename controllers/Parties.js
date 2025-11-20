@@ -5,6 +5,7 @@ const fs = require("fs");
 const path = require("path");
 const { parseExcelFile } = require("../utils/parseExcelFile");
 const { checkPartiesCsvValidity } = require("../utils/checkPartiesCsvValidity");
+const { generateBulkCustomerIds } = require("../utils/generateProductId");
 
 const generateCustomerId = async (partyType, companyName, consigneeName) => {
   let prefix = "";
@@ -124,16 +125,13 @@ exports.bulkUploadHandler = async (req, res) => {
 
     const processedParties = [];
     for (const party of parsedData) {
-      const cust_id = await generateCustomerId(
-        party.type,
-        party.company_name,
-        party.consignee_name
-      );
 
-      processedParties.push({ ...party, cust_id });
+      processedParties.push({ ...party });
     }
 
-    await PartiesModels.insertMany(processedParties);
+    const partiesData = await generateBulkCustomerIds(processedParties)
+
+    await PartiesModels.insertMany(partiesData);
 
     return res.status(200).json({
       success: true,
