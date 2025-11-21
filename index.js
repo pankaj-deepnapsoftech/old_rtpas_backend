@@ -26,6 +26,7 @@ const DispatchRoute = require("./routes/Dispatch.routes");
 const PurchaseOrderRoutes = require("./routes/PurchaseOrder");
 const ResourceRoutes = require("./routes/resources");
 const DeviceDataRoutes = require('./routes/deviceData.routes');
+const {ScrapRoutes} = require("./routes/Scrap.routes")
 
 const app = express();
 const server = http.createServer(app);
@@ -195,6 +196,7 @@ app.use("/api/parties", PartiesRoutes);
 app.use('/api/dispatch', DispatchRoute);
 app.use('/api/purchase-order', PurchaseOrderRoutes);
 app.use("/api/resources", ResourceRoutes);
+app.use("/api/scrap", ScrapRoutes);
 app.use(globalErrorHandler);
 
 server.listen(process.env.PORT, '0.0.0.0', () => {
