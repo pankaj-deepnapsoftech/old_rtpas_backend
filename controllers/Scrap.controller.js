@@ -1,9 +1,9 @@
 const { ScrapModel } = require("../models/Scrap.model");
+const { excelToJson } = require("../utils/exceltojson");
 
 
 
 class ScrapMaterial {
-
 
 
     async createScrapMaterial(req, res) {
@@ -61,12 +61,12 @@ class ScrapMaterial {
         }
     };
 
-    async updateScrapMaterial(req,res) {
+    async updateScrapMaterial(req, res) {
         try {
-            const {id} = req.params;
+            const { id } = req.params;
             const data = req.body;
-            const result = await ScrapModel.findByIdAndUpdate(id,data);
-              if (!result) {
+            const result = await ScrapModel.findByIdAndUpdate(id, data);
+            if (!result) {
                 res.status(400).json({
                     message: "Scrap material not Updated"
                 })
@@ -82,9 +82,62 @@ class ScrapMaterial {
         }
     };
 
-    // async FilterScrapMaterial(req,res){
-    //     const  
-    // }
+    async FilterScrapMaterial(req, res) {
+        try {
+            const { filterby } = req.query;
+
+            if (!filterby) {
+                return res.status(400).json({ message: "Please provide filter keywords" });
+            }
+
+            const keywords = filterby.split(" ").filter(k => k);
+            const regex = new RegExp(keywords.join("|"), "i"); // ✅ fixed
+
+            const results = await ScrapModel.find({
+                $or: [
+                    { Scrap_name: regex },
+                    { Scrap_id: regex },
+                    { Category: regex },
+                    { Extract_from: regex }
+                ]
+            });
+
+            res.status(200).json({
+                message: "Filtered scrap materials",
+                data: results
+            });
+
+        } catch (error) {
+            console.error(error); // log error
+            res.status(500).json({
+                message: "Error filtering scrap materials",
+                error: error.message
+            });
+        }
+    };
+
+    async BulkCreateScrap(req, res) {
+        try {
+            const file = req.file;
+
+            if (!file) {
+                return res.status(404).json({
+                    message: "File not found",
+                })
+            }
+            const data = excelToJson(file?.path);
+            const result = await ScrapModel.insertMany(data);
+            res.status(200).json({
+                message: "data Uploaded"
+            })
+        } catch (error) {
+            res.status(500).json({
+                message: "Error filtering scrap materials",
+                error: error.message
+            });
+        }
+    }
+
 }
 
 module.exports = { ScrapMaterial }
