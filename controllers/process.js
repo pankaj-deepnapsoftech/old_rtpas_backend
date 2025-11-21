@@ -80,64 +80,64 @@ exports.create = TryCatch(async (req, res) => {
 });
 exports.update = async (req, res) => {
   const { _id, status, bom } = req.body;
-const bomDoc = await BOM.findById(bom._id)
-  .populate({
-    path: "raw_materials",
-    populate: { path: "item", model: "Product" }
-  })
-  .populate({
-    path: "scrap_materials",
-    populate: { path: "item", model: "Product" }
-  });
-
- 
-
-if (!bomDoc) {
-  throw new ErrorHandler("BOM not found", 404);
-}
+  const bomDoc = await BOM.findById(bom._id)
+    .populate({
+      path: "raw_materials",
+      populate: { path: "item", model: "Product" }
+    })
+    .populate({
+      path: "scrap_materials",
+      populate: { path: "item", model: "Product" }
+    });
 
 
-await Promise.all(
-  bom.raw_materials.map(async (rm) => {
-    // Find the BOMRawMaterial document by its _id
-    const bomRawMat = await BOMRawMaterial.findById(rm._id);
-    if (bomRawMat) {
-      // Save in BOMRawMaterial
-      bomRawMat.uom_used_quantity = rm.uom_used_quantity || bomRawMat.uom_used_quantity;
-      await bomRawMat.save();
 
-      // Save in Product (item)
-      if (bomRawMat.item && rm.uom_used_quantity) {
-        const product = await Product.findById(bomRawMat.item);
-        if (product) {
-          product.uom_used_quantity = rm.uom_used_quantity;
-          await product.save();
+  if (!bomDoc) {
+    throw new ErrorHandler("BOM not found", 404);
+  }
+
+
+  await Promise.all(
+    bom.raw_materials.map(async (rm) => {
+      // Find the BOMRawMaterial document by its _id
+      const bomRawMat = await BOMRawMaterial.findById(rm._id);
+      if (bomRawMat) {
+        // Save in BOMRawMaterial
+        bomRawMat.uom_used_quantity = rm.uom_used_quantity || bomRawMat.uom_used_quantity;
+        await bomRawMat.save();
+
+        // Save in Product (item)
+        if (bomRawMat.item && rm.uom_used_quantity) {
+          const product = await Product.findById(bomRawMat.item);
+          if (product) {
+            product.uom_used_quantity = rm.uom_used_quantity;
+            await product.save();
+          }
         }
       }
-    }
-  })
-);
+    })
+  );
 
-await Promise.all(
-  bom.scrap_materials.map(async (sc) => {
-    // Find the BOMScrapMaterial document by its _id
-    const bomSc = await BOMScrapMaterial.findById(sc._id);
-    if (bomSc) {
-      // Save in BOMScrapMaterial
-      bomSc.uom_used_quantity = sc.uom_produced_quantity || bomSc.uom_used_quantity;
-      await bomSc.save();
+  await Promise.all(
+    bom.scrap_materials.map(async (sc) => {
+      // Find the BOMScrapMaterial document by its _id
+      const bomSc = await BOMScrapMaterial.findById(sc._id);
+      if (bomSc) {
+        // Save in BOMScrapMaterial
+        bomSc.uom_used_quantity = sc.uom_produced_quantity || bomSc.uom_used_quantity;
+        await bomSc.save();
 
-      // Save in Product (item)
-      if (bomSc.item && sc.uom_produced_quantity) {
-        const product = await Product.findById(bomSc.item);
-        if (product) {
-          product.uom_used_quantity = sc.uom_produced_quantity;
-          await product.save();
+        // Save in Product (item)
+        if (bomSc.item && sc.uom_produced_quantity) {
+          const product = await Product.findById(bomSc.item);
+          if (product) {
+            product.uom_used_quantity = sc.uom_produced_quantity;
+            await product.save();
+          }
         }
       }
-    }
-  })
-);
+    })
+  );
 
   const productionProcess = await ProductionProcess.findById(_id).populate({
     path: "scrap_materials",
@@ -223,7 +223,7 @@ await Promise.all(
     // SCRAP MATERIALS
     const prevSCs = productionProcess.scrap_materials;
     const currSCs = bom.scrap_materials;
-    
+
 
     await Promise.all(
       prevSCs.map(async (prevSc) => {
@@ -233,7 +233,7 @@ await Promise.all(
         );
 
         if (!currSc || !scrapProduct) return;
-        
+
         const prevQty = prevSc.produced_quantity || 0;
         const newQty = currSc.produced_quantity || 0;
 
@@ -293,7 +293,7 @@ await Promise.all(
   }
 
   // Check if finished good quantities changed
- 
+
   console.log(
     "Object.keys length:",
     bom?.finished_good ? Object.keys(bom.finished_good).length : 0
@@ -303,7 +303,7 @@ await Promise.all(
     const prevFG = productionProcess.finished_good;
     const currFG = bom.finished_good;
 
-    
+
 
     // Only check if produced_quantity exists and has changed
     if (
@@ -358,21 +358,22 @@ await Promise.all(
       }
     });
   }
-  
+
   // Check if scrap material quantities changed
   if (Array.isArray(bom?.scrap_materials)) {
     bom.scrap_materials.forEach((currSc) => {
-      
-      
+
+
       // const prevSc = productionProcess.scrap_materials.find(
       //   (item) => item?.item + "" === currSc?.item + ""
       // );
-       const prevSc = productionProcess.scrap_materials.find(
-        (item) => {if(item?.item?.name  === currSc?.item_name.label)
-          return item;
-         }
+      const prevSc = productionProcess.scrap_materials.find(
+        (item) => {
+          if (item?.item?.name === currSc?.item_name.label)
+            return item;
+        }
       );
-      console.log("This is prevSc::",prevSc)
+      // console.log("This is prevSc::",prevSc)
 
       // Convert produced_quantity to number and check if it changed
       if (prevSc && currSc.produced_quantity !== undefined) {
@@ -390,8 +391,8 @@ await Promise.all(
   }
 
   // If any changes detected and status is not "production started", set to "work in progress"
- 
- 
+
+
   if (hasChanges && (productionProcess.status === "production started" || productionProcess.status === "production paused")) {
     productionProcess.status = "production in progress";
   } else if (
@@ -404,7 +405,7 @@ await Promise.all(
   } else {
     console.log("No status change needed");
   }
-  
+
   // Mark nested updates 
   productionProcess.markModified("finished_good");
   productionProcess.markModified("raw_materials");
@@ -412,7 +413,7 @@ await Promise.all(
   console.log("production process status", productionProcess);
   await productionProcess.save();
 
-  
+
 
   return res.status(200).json({
     success: true,
@@ -433,11 +434,11 @@ exports.moveToInventory = TryCatch(async (req, res) => {
 
   if (!process) throw new ErrorHandler("Production process not found", 404);
 
- 
+
   const product = await Product.findById(process.finished_good.item?._id);
   if (!product) throw new ErrorHandler("Product not found in inventory", 404);
 
- 
+
   process.status = "moved to inventory";
   await process.save();
 
@@ -549,7 +550,7 @@ exports.receiveByInventory = async (req, res) => {
     const currentStockRaw = finishedProduct.current_stock;
     const currentStock = Number(currentStockRaw) || 0;
 
- 
+
     finishedProduct.current_stock = currentStock + quantityToAdd;
     finishedProduct.change_type = "increase";
     finishedProduct.quantity_changed = quantityToAdd;
@@ -688,8 +689,8 @@ exports.requestForAllocation = TryCatch(async (req, res) => {
   });
 });
 exports.markInventoryInTransit = TryCatch(async (req, res) => {
-   const { _id } = req.body; // Raw Material ID
-   console.log(_id)
+  const { _id } = req.body; // Raw Material ID
+  console.log(_id)
   if (!_id) {
     throw new ErrorHandler("Raw material ID is required", 400);
   }
@@ -819,17 +820,36 @@ exports.startProduction = async (req, res) => {
     });
   }
 };
-// yeeeee
+
 
 exports.markDone = TryCatch(async (req, res) => {
   const { _id } = req.params;
-  if (!_id) {
-    throw new ErrorHandler("Id not provided", 400);
-  }
-  const productionProcess = await ProductionProcess.findById(_id);
+  if (!_id) throw new ErrorHandler("Id not provided", 400);
+
+  const productionProcess = await ProductionProcess.findById(_id)
+    .populate("raw_materials.item");
+
   if (!productionProcess) {
     throw new ErrorHandler("Production process doesn't exist", 400);
   }
+
+  const updatePromises = productionProcess.raw_materials.map(async (material) => {
+    if (!material.item) return;
+
+    const incQty = Number(material.remaining_quantity || 0);
+
+    return Product.findByIdAndUpdate(
+      material.item._id,
+      {
+        $inc: { current_stock: incQty },
+        change_type: "increase",
+        quantity_changed: incQty
+      },
+      { new: true }
+    );
+  });
+
+  await Promise.all(updatePromises);
 
   productionProcess.status = "completed";
   await productionProcess.save();
@@ -837,9 +857,11 @@ exports.markDone = TryCatch(async (req, res) => {
   res.status(200).json({
     status: 200,
     success: true,
-    message: "Production process has been marked done successfully",
+    message: "Production process marked done & stocks updated",
   });
 });
+
+
 
 exports.updateStatus = TryCatch(async (req, res) => {
   const { _id, status } = req.body;
@@ -924,7 +946,7 @@ exports.bulkDelete = TryCatch(async (req, res) => {
   }
 
   const result = await ProductionProcess.deleteMany({ _id: { $in: ids } });
-  
+
   if (result.deletedCount === 0) {
     throw new ErrorHandler("No production processes found for the provided IDs", 404);
   }
