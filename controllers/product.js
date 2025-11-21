@@ -6,7 +6,7 @@ const { checkProductCsvValidity } = require("../utils/checkProductCsvValidity");
 const BOMRawMaterial = require("../models/bom-raw-material");
 const ProductionProcess = require("../models/productionProcess");
 const BOM = require("../models/bom");
-const { generateProductId } = require("../utils/generateProductId");
+const { generateProductId, generateProductIdsForBulk } = require("../utils/generateProductId");
 const path = require("path");
 const XLSX = require("xlsx");
 const Store = require("../models/store");
@@ -22,7 +22,6 @@ const capitalizeWords = (str) => {
 
 exports.create = TryCatch(async (req, res) => {
   const productDetails = req.body;
-  console.log("Product details", productDetails);
   if (!productDetails) {
     throw new ErrorHandler("Please provide product details", 400);
   }
@@ -230,14 +229,11 @@ exports.bulkUploadHandler = async (req, res) => {
       }
 
       // Debug: Log HSN code for each product
-      console.log(
-        `Product: ${productData.name}, HSN code: ${productData.hsn_code
-        }, Type: ${typeof productData.hsn_code}`
-      );
+      
 
       // --- UPDATED CODE: product_id = last 3 chars of _id ---
       const tempId = new Product()._id.toString();
-      processedProduct.product_id = tempId.slice(-3);
+      // processedProduct.product_id = await generateProductId(productData.category);
       // -----------------------------------------------------
 
       // Ensure inventory_category is 'direct'
@@ -339,13 +335,15 @@ exports.bulkUploadHandler = async (req, res) => {
       processedProducts.push(processedProduct);
     }
 
+    const newDirectProduct = await generateProductIdsForBulk(processedProducts);
+
     // Insert products
-    await Product.insertMany(processedProducts);
+    await Product.insertMany(newDirectProduct);
 
     res.status(200).json({
       status: 200,
       success: true,
-      message: `${processedProducts.length} direct products have been added successfully`,
+      message: `${newDirectProduct.length} direct products have been added successfully`,
     });
   } catch (error) {
     // Clean up file in case of error
@@ -417,9 +415,9 @@ exports.bulkUploadHandlerIndirect = async (req, res) => {
       }
 
       // Always generate product_id automatically (ignore any provided product_id)
-      processedProduct.product_id = await generateProductId(
-        processedProduct.category
-      );
+      // processedProduct.product_id = await generateProductId(
+      //   processedProduct.category
+      // );
 
       processedProduct.inventory_category = "indirect";
 
@@ -519,8 +517,10 @@ exports.bulkUploadHandlerIndirect = async (req, res) => {
       processedProducts.push(processedProduct);
     }
 
+    const indirectGoods = await generateProductIdsForBulk(processedProducts);
+
     // Insert products
-    await Product.insertMany(processedProducts);
+    await Product.insertMany(indirectGoods);
 
     res.status(200).json({
       status: 200,
@@ -543,9 +543,8 @@ exports.bulkUploadHandlerIndirect = async (req, res) => {
 exports.workInProgressProducts = TryCatch(async (req, res) => {
   const products = [];
   const processes = await ProductionProcess.find({
-    status: "production started",
-  })
-    .populate({
+    status: { $in: ["production started", "production in progress"] }
+  }) .populate({
       path: "raw_materials",
       populate: [
         {

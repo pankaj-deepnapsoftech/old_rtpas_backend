@@ -1,3 +1,4 @@
+const { PartiesModels } = require("../models/Parties");
 const Product = require("../models/product");
 
 // const CATEGORY_PREFIX_MAP = {
@@ -35,26 +36,138 @@ async function generateProductId(category) {
     const normalized = category.toLowerCase();
     const prefix = generateDynamicPrefix(normalized);
 
+    // Example: ELE001 (ELE = prefix, 001 = number)
     const regex = new RegExp(`^${prefix}(\\d{3})$`, "i");
 
+    // Fetch only last created product matching the prefix
     const lastProduct = await Product.findOne({
-      product_id: { $regex: regex },
+      product_id: { $regex: regex }
     }).sort({ createdAt: -1 });
 
     let nextSeq = 1;
+
     if (lastProduct) {
       const match = lastProduct.product_id.match(regex);
       if (match && match[1]) {
-        nextSeq = parseInt(match[1]) + 1;
+        nextSeq = parseInt(match[1]) + 1; // increment last ID
       }
     }
 
     const padded = String(nextSeq).padStart(3, "0");
-    return `${prefix}${padded}`;
+    const newId = `${prefix}${padded}`;
+
+    console.log("Generated Product ID:", newId);
+    return newId;
+
   } catch (error) {
     console.error("Error in generateProductId:", error.message);
     throw error;
   }
 }
 
-module.exports = { generateProductId };
+async function generateProductIdsForBulk(jsonData) {
+  // STEP 1: Load all existing product IDs from DB
+  const existing = await Product.find(
+    { product_id: { $exists: true } },
+    { product_id: 1 }
+  );
+
+  // STEP 2: Build category-prefix map → highest existing number
+  const prefixMap = {};
+
+  for (const item of existing) {
+    const id = item.product_id;
+    const prefix = id.replace(/[0-9]/g, "");
+    const num = parseInt(id.replace(/\D/g, ""));
+
+    if (!prefixMap[prefix] || prefixMap[prefix] < num) {
+      prefixMap[prefix] = num; // store highest existing
+    }
+  }
+
+  // STEP 3: Process excel/csv data
+  const output = [];
+
+  for (const product of jsonData) {
+    if (!product.category) {
+      throw new Error(`Product missing category: ${JSON.stringify(product)}`);
+    }
+
+    const normalized = product.category.toLowerCase();
+    const prefix = generateDynamicPrefix(normalized);
+
+    if (!prefixMap[prefix]) prefixMap[prefix] = 0;
+
+    prefixMap[prefix] += 1; // next sequence number
+    const padded = String(prefixMap[prefix]).padStart(3, "0");
+
+    product.product_id = `${prefix}${padded}`;
+
+    output.push(product);
+  }
+
+  return output;
+}
+
+async function generateBulkCustomerIds(parsedData) {
+  // Step A: Load all existing cust_id values
+  const existing = await PartiesModels.find(
+    { cust_id: { $exists: true } },
+    { cust_id: 1 }
+  );
+
+  // Step B: Build prefix → highest number map
+  const prefixMap = {};
+
+  for (const row of existing) {
+    const id = row.cust_id;
+    const prefix = id.replace(/[0-9]/g, "");
+    const num = Number(id.replace(/\D/g, ""));
+
+    if (!prefixMap[prefix] || prefixMap[prefix] < num) {
+      prefixMap[prefix] = num;
+    }
+  }
+
+  // Step C: Process uploaded rows and assign IDs
+  const output = [];
+
+  for (const party of parsedData) {
+    const prefix = generateCustomerPrefix(party);
+
+    if (!prefixMap[prefix]) prefixMap[prefix] = 0; // initialize
+
+    prefixMap[prefix] += 1;
+
+    const padded = String(prefixMap[prefix]).padStart(3, "0");
+
+    party.cust_id = `${prefix}${padded}`;
+
+    output.push(party);
+  }
+
+  return output;
+}
+
+
+function generateCustomerPrefix(party) {
+  const { type, company_name, consignee_name } = party;
+
+  if (type === "Company" && company_name?.trim()) {
+    return company_name.trim().substring(0, 2).toUpperCase();
+  }
+
+  if (Array.isArray(consignee_name) && consignee_name.length > 0) {
+    return consignee_name[0].trim().substring(0, 2).toUpperCase();
+  }
+
+  if (typeof consignee_name === "string" && consignee_name.trim()) {
+    return consignee_name.trim().substring(0, 2).toUpperCase();
+  }
+
+  return "CU";
+}
+
+
+
+module.exports = { generateProductId,generateProductIdsForBulk,generateBulkCustomerIds };
