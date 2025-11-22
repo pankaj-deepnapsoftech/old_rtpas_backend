@@ -30,7 +30,7 @@ class ScrapMaterial {
             limit = parseInt(limit) || 10;
             const skip = (page - 1) * limit;
 
-            const data = await ScrapModel.find({}).skip(skip).limit(limit);
+            const data = await ScrapModel.find({}).skip(skip).limit(limit).lean();
             res.status(200).json({
                 message: "Scrap Material is Created",
                 data: data
@@ -85,7 +85,12 @@ class ScrapMaterial {
 
     async FilterScrapMaterial(req, res) {
         try {
-            const { filterby } = req.query;
+
+            const { filterby,page, limit } = req.query;
+            page = parseInt(page) || 1;
+            limit = parseInt(limit) || 10;
+            const skip = (page - 1) * limit;
+
 
             if (!filterby) {
                 return res.status(400).json({ message: "Please provide filter keywords" });
@@ -101,7 +106,7 @@ class ScrapMaterial {
                     { Category: regex },
                     { Extract_from: regex }
                 ]
-            });
+            }).skip(skip).limit(limit).lean();
 
             res.status(200).json({
                 message: "Filtered scrap materials",
