@@ -23,6 +23,7 @@ exports.create = TryCatch(async (req, res) => {
       ...data,
       user_id: req?.user._id,
       order_id,
+      approved: false, // Always require approval, regardless of user role
       //   productFile: productFilePath,
     };
 
@@ -40,6 +41,82 @@ exports.create = TryCatch(async (req, res) => {
     console.error("Error creating purchase:", error);
     throw new ErrorHandler("Internal Server Error", 500);
   }
+});
+
+const mongoose = require("mongoose");
+
+exports.unapproved = TryCatch(async (req, res) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 20;
+  const skip = (page - 1) * limit;
+  const isSuper = !!req.user?.isSuper;
+  const userMatch = isSuper
+    ? {}
+    : { user_id: new mongoose.Types.ObjectId(req.user._id) };
+
+  const data = await Purchase.aggregate([
+    { $match: { approved: false, ...userMatch } },
+    {
+      $lookup: {
+        from: "products",
+        localField: "product_id",
+        foreignField: "_id",
+        as: "product_id",
+        pipeline: [{ $project: { name: 1, price: 1, uom: 1 } }],
+      },
+    },
+    {
+      $lookup: {
+        from: "parties",
+        localField: "party",
+        foreignField: "_id",
+        as: "party",
+        pipeline: [{ $project: { company_name: 1, consignee_name: 1 } }],
+      },
+    },
+    { $unwind: { path: "$party", preserveNullAndEmptyArrays: true } },
+    {
+      $project: {
+        order_id: 1,
+        product_qty: 1,
+        GST: 1,
+        price: 1,
+        product_id: 1,
+        party: 1,
+        createdAt: 1,
+      },
+    },
+  ])
+    .sort({ _id: -1 })
+    .skip(skip)
+    .limit(limit)
+    .exec();
+
+  return res.status(200).json({ success: true, data });
+});
+
+exports.approve = TryCatch(async (req, res) => {
+  const { id } = req.params;
+  const updated = await Purchase.findByIdAndUpdate(
+    id,
+    { approved: true },
+    { new: true }
+  );
+  if (!updated) {
+    throw new ErrorHandler("Sale not found", 404);
+  }
+  return res.status(200).json({ success: true, message: "Sale approved" });
+});
+
+exports.bulkApprove = TryCatch(async (req, res) => {
+  const { ids } = req.body;
+  if (!Array.isArray(ids) || ids.length === 0) {
+    throw new ErrorHandler("ids array is required", 400);
+  }
+  await Purchase.updateMany({ _id: { $in: ids } }, { $set: { approved: true } });
+  return res
+    .status(200)
+    .json({ success: true, message: `Approved ${ids.length} sale(s)` });
 });
 exports.update = TryCatch(async (req, res) => {
   const data = req.body;
@@ -106,7 +183,13 @@ exports.getAll = TryCatch(async (req, res) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 5;
   const skip = (page - 1) * limit;
+  const isSuper = !!req.user?.isSuper;
+  const userMatch = isSuper
+    ? {}
+    : { user_id: new mongoose.Types.ObjectId(req.user._id) };
+
   const data = await Purchase.aggregate([
+    { $match: { ...userMatch } }, // Show all sales (approved and unapproved) in Sales Management
     {
       $lookup: {
         from: "boms",
@@ -272,7 +355,8 @@ exports.getAll = TryCatch(async (req, res) => {
     },
     {
       $project: {
-        sale_status: 1, // ✅ new field
+        sale_status: 1,   // ✅ new field
+        approved: 1, // Include approval status
         order_id: 1,
         price: 1,
         product_qty: 1,
@@ -324,6 +408,120 @@ exports.AddToken = TryCatch(async (req, res) => {
   });
 });
 
+
+exports.getUpcomingSales = TryCatch(async (req, res) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  const skip = (page - 1) * limit;
+
+  const data = await Purchase.aggregate([
+    { $match: { approved: true } },
+    {
+      $lookup: {
+        from: "parties",
+        localField: "party",
+        foreignField: "_id",
+        as: "party",
+        pipeline: [
+          {
+            $project: {
+              company_name: 1,
+              consignee_name: 1,
+              contact_number: 1,
+              email_id: 1,
+            },
+          },
+        ],
+      },
+    },
+    {
+      $unwind: { path: "$party", preserveNullAndEmptyArrays: true },
+    },
+    {
+      $lookup: {
+        from: "products",
+        localField: "product_id",
+        foreignField: "_id",
+        as: "product_id",
+        pipeline: [
+          {
+            $project: {
+              name: 1,
+              price: 1,
+              uom: 1,
+            },
+          },
+        ],
+      },
+    },
+    {
+      $unwind: { path: "$product_id", preserveNullAndEmptyArrays: true },
+    },
+    {
+      $lookup: {
+        from: "boms",
+        localField: "_id",
+        foreignField: "sale_id",
+        as: "boms",
+      },
+    },
+    {
+      $addFields: {
+        has_bom: { $gt: [{ $size: "$boms" }, 0] },
+        total_price: {
+          $add: [
+            { $multiply: ["$price", "$product_qty"] },
+            {
+              $divide: [
+                {
+                  $multiply: [
+                    { $multiply: ["$price", "$product_qty"] },
+                    "$GST",
+                  ],
+                },
+                100,
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      $project: {
+        order_id: 1,
+        party: 1,
+        product_id: 1,
+        product_qty: 1,
+        price: 1,
+        GST: 1,
+        total_price: 1,
+        uom: 1,
+        mode_of_payment: 1,
+        terms_of_delivery: 1,
+        has_bom: 1,
+        createdAt: 1,
+        updatedAt: 1,
+      },
+    },
+  ])
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit)
+    .exec();
+
+  const total = await Purchase.countDocuments({ approved: true });
+
+  return res.status(200).json({
+    success: true,
+    data,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    },
+  });
+});
 
 exports.getOne = TryCatch(async (req, res) => {
   const id = req.user._id;

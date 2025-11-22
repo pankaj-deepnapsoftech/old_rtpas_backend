@@ -69,6 +69,10 @@ const Purchases = new Schema(
     terms_of_delivery: {
       type: String,
     },
+    approved: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );

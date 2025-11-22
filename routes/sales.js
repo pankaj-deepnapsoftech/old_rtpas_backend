@@ -8,8 +8,13 @@ const {
   uploadinvoice,
   Delivered,
   Imagehandler,
+  unapproved,
+  approve,
+  bulkApprove,
+  getUpcomingSales,
 } = require("../controllers/sales");
 const { isAuthenticated } = require("../middlewares/isAuthenticated");
+const { isSuper } = require("../middlewares/isSuper");
 // const { isSuper } = require("../middlewares/isSuper");
 const { Imageupload } = require("../utils/upload");
 const { Validater } = require("../validation/Validator");
@@ -20,7 +25,7 @@ const router = express.Router();
 // router.route("/").post(isAuthenticated, isAllowed, create).put(isAuthenticated, isAllowed, update).delete(isAuthenticated, isAllowed, remove);
 // router.get("/all", isAuthenticated, all);
 // router.get("/wip", isAuthenticated, workInProgressProducts);
-// router.get("/unapproved", isAuthenticated, isSuper, unapproved);
+router.get("/unapproved", isAuthenticated, unapproved);
 router.post("/create", isAuthenticated, Validater(SalesValidation), create);
 
 // router.get("/:id", isAuthenticated, isAllowed, details);
@@ -44,6 +49,9 @@ router.patch("/addToken/:id", isAuthenticated, AddToken);
 
 router.get("/getAll", isAuthenticated, getAll);
 router.get("/getOne", isAuthenticated, getOne);
+router.get("/upcoming-sales", isAuthenticated, getUpcomingSales);
+router.patch("/approve/:id", isAuthenticated, approve);
+router.post("/bulk-approve", isAuthenticated, bulkApprove);
 
 router.patch("/delivery/:id", Imageupload.single("delivery"), Delivered);
 module.exports = router;
