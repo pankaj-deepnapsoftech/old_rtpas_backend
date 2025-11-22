@@ -35,11 +35,18 @@ exports.update = TryCatch(async (req, res) => {
     throw new ErrorHandler("Store doesn't exist", 400);
   }
 
+  const canApprove =
+    req.user?.isSuper ||
+    (Array.isArray(req.user?.role?.permissions) &&
+      req.user.role.permissions.includes("approval"));
+
   store = await Store.findByIdAndUpdate(
     id,
     {
       ...storeDetails,
-      approved: req.user.isSuper ? storeDetails?.approved : false,
+      approved: canApprove
+        ? storeDetails?.approved ?? store.approved
+        : store.approved,
     },
     { new: true }
   );

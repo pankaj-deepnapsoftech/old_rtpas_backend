@@ -43,7 +43,7 @@ router.delete("/bulk-delete", isAuthenticated , bulkDelete);
 // Get operations
 router.get("/all", isAuthenticated, all);
 router.get("/wip", isAuthenticated, workInProgressProducts);
-router.get("/unapproved", isAuthenticated, isSuper, unapproved);
+router.get("/unapproved", isAuthenticated,  unapproved);
 router.get("/raw-materials", isAuthenticated, rawMaterials);
 router.get("/:id", isAuthenticated, details);
 

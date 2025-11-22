@@ -39,7 +39,8 @@ exports.CreateParties = TryCatch(async (req, res) => {
 
   const cust_id = await generateCustomerId(type, company_name, consignee_name);
 
-  const result = await PartiesModels.create({ ...data, cust_id });
+  const isAdmin = !!req.user?.isSuper;
+  const result = await PartiesModels.create({ ...data, cust_id, approved: isAdmin });
   console.log(result);
   return res.status(201).json({
     message: "Party added successfully",
@@ -52,8 +53,9 @@ exports.GetParties = TryCatch(async (req, res) => {
   const pages = parseInt(page) || 1;
   const limits = parseInt(limit) || 10;
   const skip = (pages - 1) * limits;
-  const totalData = await PartiesModels.find().countDocuments();
-  const data = await PartiesModels.find({})
+  const match = req.user?.isSuper ? {} : { approved: true };
+  const totalData = await PartiesModels.find(match).countDocuments();
+  const data = await PartiesModels.find(match)
     .sort({ _id: -1 })
     .skip(skip)
     .limit(limits);
@@ -86,22 +88,29 @@ exports.UpdateParties = TryCatch(async (req, res) => {
     throw new ErrorHandler("Party not registered", 400);
   }
 
-  // Destructure type/company/consignee from incoming update data
-  const { type, company_name, consignee_name } = data;
+  const nextType = data.type ?? find.type;
+  const nextCompanyName = data.company_name ?? find.company_name;
+  const nextConsigneeName = data.consignee_name ?? find.consignee_name;
 
-  // Generate new cust_id based on updated data
-  const cust_id = await generateCustomerId(type, company_name, consignee_name);
+  const cust_id = await generateCustomerId(nextType, nextCompanyName, nextConsigneeName);
 
-  // Update the party with new data + generated cust_id
   const updated = await PartiesModels.findByIdAndUpdate(
     id,
-    { ...data, cust_id },
+    { ...find.toObject(), ...data, cust_id },
     { new: true }
   );
 
   return res.status(200).json({
     message: "Data updated successfully",
     updated,
+  });
+});
+
+exports.GetUnapprovedParties = TryCatch(async (req, res) => {
+  const data = await PartiesModels.find({ approved: false }).sort({ _id: -1 });
+  return res.status(200).json({
+    message: "Unapproved parties",
+    data,
   });
 });
 
