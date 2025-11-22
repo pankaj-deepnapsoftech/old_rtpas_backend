@@ -1,5 +1,6 @@
 const { ScrapModel } = require("../models/Scrap.model");
 const { excelToJson } = require("../utils/exceltojson");
+const { assignScrapIds } = require("../utils/generateProductId");
 
 
 
@@ -126,11 +127,14 @@ class ScrapMaterial {
                 })
             }
             const data = excelToJson(file?.path);
-            const result = await ScrapModel.insertMany(data);
+            const dataWithId = await assignScrapIds(data)
+            const result = await ScrapModel.insertMany(dataWithId);
             res.status(200).json({
-                message: "data Uploaded"
+                message: "data Uploaded",
+                datacount:result.length
             })
         } catch (error) {
+            console.log(error)
             res.status(500).json({
                 message: "Error filtering scrap materials",
                 error: error.message

@@ -1,5 +1,6 @@
 const { PartiesModels } = require("../models/Parties");
 const Product = require("../models/product");
+const { ScrapModel } = require("../models/Scrap.model");
 
 // const CATEGORY_PREFIX_MAP = {
 //   "finished goods": "FG",
@@ -169,5 +170,34 @@ function generateCustomerPrefix(party) {
 }
 
 
+async function assignScrapIds(jsonData) {
 
-module.exports = { generateProductId,generateProductIdsForBulk,generateBulkCustomerIds };
+    // get last item from DB
+    const lastItem = await ScrapModel
+        .findOne({})
+        .sort({ _id: -1 })
+        .lean();
+
+    let lastNumber = 0;
+
+    if (lastItem?.Scrap_id) {
+        lastNumber = Number(lastItem.Scrap_id.split("-").pop());
+    }
+
+    // assign new Scrap_id to each item
+    const updatedData = jsonData.map((item, index) => {
+        const newNumber = lastNumber + index + 1;
+        const newId = `SCRAP-${String(newNumber).padStart(5, "0")}`;
+
+        return {
+            ...item,
+            Scrap_id: newId,
+        };
+    });
+
+    return updatedData;
+}
+
+
+
+module.exports = { assignScrapIds,generateProductId,generateProductIdsForBulk,generateBulkCustomerIds };
