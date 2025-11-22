@@ -43,9 +43,14 @@ exports.create = TryCatch(async (req, res) => {
     estimated_quantity: bom.finished_good.quantity,
   };
 
-  const processes = bom.processes.map((process) => ({
-    process: process,
-  }));
+  const inputProcesses = Array.isArray(processData.processes)
+    ? processData.processes.filter((p) => typeof p === "string" && p.trim().length > 0)
+    : [];
+  const bomProcesses = Array.isArray(bom.processes)
+    ? bom.processes.filter((p) => typeof p === "string" && p.trim().length > 0)
+    : [];
+  const selectedProcesses = inputProcesses.length > 0 ? inputProcesses : (bomProcesses.length > 0 ? bomProcesses : ["Pre-production"]);
+  const processes = selectedProcesses.map((p) => ({ process: p }));
 
   const raw_materials = bom.raw_materials.map((material) => ({
     item: material.item._id,
@@ -447,6 +452,12 @@ exports.moveToInventory = TryCatch(async (req, res) => {
     message: `Process successfully marked as 'moved to inventory'.`,
     updatedProcess: process,
   });
+  if (global.io) {
+    global.io.emit("processStatusUpdated", {
+      id: String(process._id),
+      status: process.status,
+    });
+  }
 });
 
 
@@ -473,9 +484,13 @@ exports.outFinishGoods = async (req, res) => {
     process.status = "Out Finished Goods"; // ya jo enum me suitable ho
     await process.save();
 
-    return res
-      .status(200)
-      .json({ message: "Out Finished Goods marked successfully", process });
+    res.status(200).json({ message: "Out Finished Goods marked successfully", process });
+    if (global.io) {
+      global.io.emit("processStatusUpdated", {
+        id: String(process._id),
+        status: process.status,
+      });
+    }
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server Error" });
@@ -725,6 +740,12 @@ exports.markInventoryInTransit = TryCatch(async (req, res) => {
       requiredBom.production_process,
       { status: "inventory in transit" }
     );
+    if (global.io) {
+      global.io.emit("processStatusUpdated", {
+        id: String(requiredBom.production_process),
+        status: "inventory in transit",
+      });
+    }
   }
 
   res.status(200).json({
@@ -733,6 +754,13 @@ exports.markInventoryInTransit = TryCatch(async (req, res) => {
     rawMaterial: updatedRawMaterial,
     allOutForInventory
   });
+  if (global.io) {
+    global.io.emit("inventoryApprovalUpdated", {
+      bomId: String(requiredBom._id),
+      rawMaterialId: String(updatedRawMaterial._id),
+      outForInventory: true,
+    });
+  }
 });
 
 exports.startProduction = async (req, res) => {
@@ -806,11 +834,17 @@ exports.startProduction = async (req, res) => {
     process.productionStartedAt = new Date();
     await process.save();
 
-    res.status(200).json({
-      success: true,
-      message: "Production started successfully",
-      process,
+  res.status(200).json({
+    success: true,
+    message: "Production started successfully",
+    process,
+  });
+  if (global.io) {
+    global.io.emit("processStatusUpdated", {
+      id: String(process._id),
+      status: process.status,
     });
+  }
   } catch (error) {
     console.error("Error in startProduction:", error);
     res.status(500).json({
@@ -880,6 +914,12 @@ exports.updateStatus = TryCatch(async (req, res) => {
     message: `Production status updated to ${status}`,
     updated: process,
   });
+  if (global.io) {
+    global.io.emit("processStatusUpdated", {
+      id: String(process._id),
+      status: process.status,
+    });
+  }
 });
 // Pause Production
 exports.pauseProduction = TryCatch(async (req, res) => {
@@ -935,6 +975,12 @@ exports.updateInventoryStatus = TryCatch(async (req, res) => {
     message: `Status updated to '${status}'`,
     updatedProcess: process,
   });
+  if (global.io) {
+    global.io.emit("processStatusUpdated", {
+      id: String(process._id),
+      status: process.status,
+    });
+  }
 });
 
 

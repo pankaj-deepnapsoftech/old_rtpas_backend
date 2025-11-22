@@ -7,7 +7,7 @@ const router = express.Router();
 
 router.post('/', isAuthenticated, create);
 router.get('/all', all);
-router.get('/unapproved', isAuthenticated, isSuper, unapproved);
+router.get('/unapproved', isAuthenticated,  unapproved);
 router.post("/bulk", isAuthenticated, upload.single('excel'), bulkUploadHandler);
 router.route('/:id')
         .get(isAuthenticated, details)

@@ -132,7 +132,7 @@ exports.create = TryCatch(async (req, res) => {
 
   // Get all products to group by name
   const products = await Product.find({ _id: { $in: raw_materials.map(m => m.item) } });
-  
+
   // Group raw materials by item name and sum their quantities
   const groupedMaterials = {};
   raw_materials.forEach(material => {
@@ -150,7 +150,7 @@ exports.create = TryCatch(async (req, res) => {
       groupedMaterials[itemName].totalQuantity += Number(material.quantity) || 0;
       groupedMaterials[itemName].materials.push(material);
     }
-  }); 
+  });
 
   // Check for stock shortages based on grouped materials
   const shortages = [];
@@ -160,7 +160,7 @@ exports.create = TryCatch(async (req, res) => {
       if (!isProdExists) {
         throw new ErrorHandler(`Raw material doesn't exist`, 400);
       }
-      
+
       // Calculate total available stock (current_stock + updated_stock)
       const totalAvailableStock = (isProdExists.current_stock || 0);
       // console.log("tanish 1:", groupedMaterial.totalQuantity);
@@ -288,9 +288,9 @@ exports.create = TryCatch(async (req, res) => {
     // Create inventory shortages based on grouped materials
     for (const shortage of shortages) {
       // Find the first raw material record for this item to link the shortage
-      const firstRawMaterial = await BOMRawMaterial.findOne({ 
-        bom: bom._id, 
-        item: shortage.item 
+      const firstRawMaterial = await BOMRawMaterial.findOne({
+        bom: bom._id,
+        item: shortage.item
       });
 
       if (firstRawMaterial) {
@@ -463,7 +463,7 @@ exports.update = TryCatch(async (req, res) => {
   if (raw_materials) {
     // Get all products to group by name
     const products = await Product.find({ _id: { $in: raw_materials.map(m => m.item) } });
-    
+
     // Group raw materials by item name and sum their quantities
     const groupedMaterials = {};
     raw_materials.forEach(material => {
@@ -584,7 +584,7 @@ exports.update = TryCatch(async (req, res) => {
   if (raw_materials && raw_materials.length > 0) {
     // Get existing shortages for this BOM before deleting them
     const existingShortages = await InventoryShortage.find({ bom: bom._id });
-    
+
     // Create a map of existing shortages by item for quick lookup
     const existingShortagesMap = new Map();
     existingShortages.forEach(shortage => {
@@ -598,11 +598,11 @@ exports.update = TryCatch(async (req, res) => {
 
     // Process raw materials and create/update them
     const processedRawMaterials = [];
-    
+
     await Promise.all(
       raw_materials.map(async (material) => {
         let rawMaterialRecord;
-        
+
         if (material._id) {
           // Update existing raw material
           const isExistingRawMaterial = await BOMRawMaterial.findById(material._id);
@@ -624,7 +624,7 @@ exports.update = TryCatch(async (req, res) => {
             bom: bom._id,
           });
         }
-        
+
         if (rawMaterialRecord) {
           processedRawMaterials.push(rawMaterialRecord);
         }
@@ -637,14 +637,14 @@ exports.update = TryCatch(async (req, res) => {
       const firstRawMaterial = processedRawMaterials.find(
         rm => rm.item && rm.item.toString() === shortage.item.toString()
       );
-      
+
       if (firstRawMaterial) {
         // Check if there was a previously resolved shortage for this item
         const existingShortage = existingShortagesMap.get(shortage.item.toString());
-        
+
         let originalShortageQuantity = shortage.shortage_quantity;
         let shouldRecreateOnEdit = true;
-        
+
         // If there was a previously resolved shortage, use its original quantity
         if (existingShortage && existingShortage.is_resolved) {
           originalShortageQuantity = existingShortage.original_shortage_quantity;
@@ -749,11 +749,17 @@ exports.update = TryCatch(async (req, res) => {
 
   if (total_cost) bom.total_cost = total_cost;
 
-  if (approved && req.user.isSuper) {
+  if (approved) {
 
-    bom.approved_by = req.user._id;
+    const hasApprovalPermission = Array.isArray(req.user?.role?.permissions) && req.user.role.permissions.includes("approval");
 
-    bom.approved = true;
+    if (req.user.isSuper || hasApprovalPermission) {
+
+      bom.approved_by = req.user._id;
+
+      bom.approved = true;
+
+    }
 
   }
 
@@ -1742,6 +1748,19 @@ exports.approveRawMaterial = TryCatch(async (req, res) => {
     rawMaterial: updatedRawMaterial
 
   });
+  if (global.io) {
+    global.io.emit("inventoryApprovalUpdated", {
+      bomId: String(requiredBom._id),
+      rawMaterialId: String(updatedRawMaterial._id),
+      approved: true,
+    });
+    if (allApproved && requiredBom.production_process) {
+      global.io.emit("processStatusUpdated", {
+        id: String(requiredBom.production_process),
+        status: "Inventory Allocated",
+      });
+    }
+  }
 
 });
 
@@ -1941,7 +1960,7 @@ exports.allRawMaterialsForInventory = TryCatch(async (req, res) => {
       change_type: rm.change_type,
       quantity_changed: rm.quantity_changed,
       isInventoryApprovalClicked: rm.isInventoryApprovalClicked,
-      isOutForInventoryClicked:rm.isOutForInventoryClicked,
+      isOutForInventoryClicked: rm.isOutForInventoryClicked,
     });
   }
 
@@ -3793,7 +3812,7 @@ exports.recreateShortagesForBOM = TryCatch(async (req, res) => {
 
   // Get existing shortages for this BOM
   const existingShortages = await InventoryShortage.find({ bom: bomId });
-  
+
   // Create a map of existing shortages by item for quick lookup
   const existingShortagesMap = new Map();
   existingShortages.forEach(shortage => {
@@ -3819,10 +3838,10 @@ exports.recreateShortagesForBOM = TryCatch(async (req, res) => {
     if (quantityDifference > 0) {
       // Check if there was a previously resolved shortage for this item
       const existingShortage = existingShortagesMap.get(rawMaterial.item.toString());
-      
+
       let originalShortageQuantity = quantityDifference;
       let shouldRecreateOnEdit = true;
-      
+
       // If there was a previously resolved shortage, use its original quantity
       if (existingShortage && existingShortage.is_resolved) {
         originalShortageQuantity = existingShortage.original_shortage_quantity;
