@@ -19,7 +19,7 @@ ScrapSchema.pre("save", async function (next) {
     const lastItem = await mongoose
         .model("Scrap-data")
         .findOne({})
-        .sort({ createdAt: -1 });
+        .sort({ _id: -1 });
 
     let nextNumber = 1;
 
@@ -36,34 +36,6 @@ ScrapSchema.pre("save", async function (next) {
 });
 
 
-ScrapSchema.pre("insertMany", async function (next, docs) {
-    try {
-        const ScrapModel = mongoose.model("Scrap-data"); // <-- your model name
-
-        for (const doc of docs) {
-            if (doc.Scrap_id) continue;
-
-            // get last scrap record
-            const lastItem = await ScrapModel
-                .findOne({})
-                .sort({ _id: -1 })
-                .lean();
-
-            let nextNumber = 1;
-
-            if (lastItem?.Scrap_id) {
-                const lastId = lastItem.Scrap_id.split("-").pop();
-                nextNumber = Number(lastId) + 1;
-            }
-
-            doc.Scrap_id = `SCRAP-${String(nextNumber).padStart(5, "0")}`;
-        }
-
-        return next();
-    } catch (err) {
-        return next(err);
-    }
-});
 
 
 
