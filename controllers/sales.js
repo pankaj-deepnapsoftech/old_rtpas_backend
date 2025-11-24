@@ -62,7 +62,7 @@ exports.unapproved = TryCatch(async (req, res) => {
         localField: "product_id",
         foreignField: "_id",
         as: "product_id",
-        pipeline: [{ $project: { name: 1, price: 1, uom: 1 } }],
+        pipeline: [{ $project: { name: 1, price: 1, uom: 1, current_stock:1 } }],
       },
     },
     {
@@ -74,16 +74,19 @@ exports.unapproved = TryCatch(async (req, res) => {
         pipeline: [{ $project: { company_name: 1, consignee_name: 1 } }],
       },
     },
+ 
+
     { $unwind: { path: "$party", preserveNullAndEmptyArrays: true } },
     {
-      $project: {
+      $project: { 
         order_id: 1,
         product_qty: 1,
         GST: 1,
         price: 1,
-        product_id: 1,
+        product_id: 1,  
         party: 1,
         createdAt: 1,
+
       },
     },
   ])
