@@ -9,7 +9,7 @@ const ScrapSchema = new Schema({
     Category: { type: String, required: true },
     qty: { type: Number, required: true, default: 0 },
     description: { type: String },
-    umo:{type:String,required:true}
+    uom:{type:String,required:true}
 }, { timestamps: true }); // <-- IMPORTANT
 
 
