@@ -38,6 +38,9 @@ exports.create = TryCatch(async (req, res) => {
     throw new ErrorHandler("BOM doesn't exist", 400);
   }
 
+  if (!bom.finished_good || !bom.finished_good.item) {
+    throw new ErrorHandler("Finished good item missing in BOM", 400);
+  }
   const finished_good = {
     item: bom.finished_good.item._id,
     estimated_quantity: bom.finished_good.quantity,
@@ -52,15 +55,19 @@ exports.create = TryCatch(async (req, res) => {
   const selectedProcesses = inputProcesses.length > 0 ? inputProcesses : (bomProcesses.length > 0 ? bomProcesses : ["Pre-production"]);
   const processes = selectedProcesses.map((p) => ({ process: p }));
 
-  const raw_materials = bom.raw_materials.map((material) => ({
-    item: material.item._id,
-    estimated_quantity: material.quantity,
-  }));
+  const raw_materials = bom.raw_materials
+    .filter((material) => material?.item && material.item?._id)
+    .map((material) => ({
+      item: material.item._id,
+      estimated_quantity: material.quantity,
+    }));
 
-  const scrap_materials = bom.scrap_materials.map((material) => ({
-    item: material.item._id,
-    estimated_quantity: material.quantity,
-  }));
+  const scrap_materials = bom.scrap_materials
+    .filter((material) => material?.item && material.item?._id)
+    .map((material) => ({
+      item: material.item._id,
+      estimated_quantity: material.quantity,
+    }));
 
   const productionProcess = await ProductionProcess.create({
     ...processData,

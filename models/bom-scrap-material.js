@@ -11,6 +11,12 @@ const BOMScrapMaterialSchema = new Schema(
       type: Schema.Types.ObjectId,
       ref: "Product",
     },
+    scrap_id: {
+      type: String,
+    },
+    scrap_name: {
+      type: String,
+    },
     description: {
       type: String,
     },
@@ -20,6 +26,14 @@ const BOMScrapMaterialSchema = new Schema(
     },
     total_part_cost: {
       type: Number,
+    },
+    uom: {
+      type: String,
+      default: "",
+    },
+    unit_cost: {
+      type: Number,
+      default: 0,
     },
     uom_used_quantity: {
       type: String,

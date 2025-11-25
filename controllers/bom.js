@@ -854,7 +854,7 @@ exports.all = TryCatch(async (req, res) => {
 
 
 
-  const boms = await BOM.find({ approved: true })
+  const boms = await BOM.find({})
 
 
 

@@ -28,14 +28,17 @@ exports.all = TryCatch(async (req, res) => {
   });
 
   processes.forEach((material) => {
-    if (!material.bom || !material.bom.scrap_materials) return;
+    if (!material?.bom || !Array.isArray(material?.bom?.scrap_materials)) return;
 
-    material.scrap_materials.forEach((sc) => {
-      const bomItem = material.bom.scrap_materials.find(
-        (m) => m.item._id.toString() === sc.item._id.toString()
-      );
+    (material.scrap_materials || []).forEach((sc) => {
+      const scItemId = sc?.item && sc.item._id ? sc.item._id.toString() : null;
+      if (!scItemId) return;
 
-      // Optional: also check if bomItem is found
+      const bomItem = (material?.bom?.scrap_materials || []).find((m) => {
+        const bomItemId = m?.item && m.item._id ? m.item._id.toString() : null;
+        return bomItemId && bomItemId === scItemId;
+      });
+
       if (!bomItem) return;
 
       scraps.push({
