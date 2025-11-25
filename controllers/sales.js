@@ -50,7 +50,11 @@ exports.unapproved = TryCatch(async (req, res) => {
   const limit = parseInt(req.query.limit) || 20;
   const skip = (page - 1) * limit;
   const isSuper = !!req.user?.isSuper;
-  const userMatch = isSuper
+  const hasApprovalPermission = Array.isArray(req.user?.role?.permissions)
+    ? req.user.role.permissions.includes("approval")
+    : false;
+  const canViewAllSales = isSuper || hasApprovalPermission;
+  const userMatch = canViewAllSales
     ? {}
     : { user_id: new mongoose.Types.ObjectId(req.user._id) };
 
