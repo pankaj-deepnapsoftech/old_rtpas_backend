@@ -8,7 +8,8 @@ const ScrapSchema = new Schema({
     Extract_from: { type: String, required: true },
     Category: { type: String, required: true },
     qty: { type: Number, required: true, default: 0 },
-    description: { type: String }
+    description: { type: String },
+    umo:{type:String,required:true}
 }, { timestamps: true }); // <-- IMPORTANT
 
 
