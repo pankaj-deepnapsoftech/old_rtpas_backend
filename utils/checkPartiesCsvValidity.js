@@ -9,6 +9,9 @@ const normalizeKeys = (row) => {
     merchant_type: "parties_type",
     email_id: "email_id",
     contact_number: "contact_number",
+    contact_person_name: "contact_person_name",
+    "contact person name": "contact_person_name",
+    contact_person: "contact_person_name",
     shipped_to: "shipped_to",
     bill_to: "bill_to",
     shipped_gst_in: "shipped_gst_to",
@@ -97,6 +100,12 @@ const checkPartiesCsvValidity = async (csvData) => {
       if (!row.shipped_gst_to || row.shipped_gst_to.trim() === "") {
         throw new ErrorHandler(
           `Row ${rowNum}: Shipped_GST_IN is required when Type is 'Company'`,
+          400
+        );
+      }
+      if (!row.contact_person_name || row.contact_person_name.trim() === "") {
+        throw new ErrorHandler(
+          `Row ${rowNum}: Contact_Person_Name is required when Type is 'Company'`,
           400
         );
       }
