@@ -44,6 +44,7 @@ exports.create = TryCatch(async (req, res) => {
   const finished_good = {
     item: bom.finished_good.item._id,
     estimated_quantity: bom.finished_good.quantity,
+    remaining_quantity: bom.finished_good.quantity,
   };
 
   const inputProcesses = Array.isArray(processData.processes)
@@ -317,7 +318,7 @@ exports.update = async (req, res) => {
 
 
 
-    // Only check if produced_quantity exists and has changed
+
     if (
       currFG.produced_quantity !== undefined &&
       prevFG.produced_quantity !== currFG.produced_quantity
@@ -325,12 +326,13 @@ exports.update = async (req, res) => {
       hasChanges = true;
       console.log("Finished good change detected!");
 
-      // ✅ Update produced_quantity
+
       productionProcess.finished_good.produced_quantity = Number(currFG.produced_quantity) || 0;
 
-      // ✅ Also update remaining_quantity
+
       productionProcess.finished_good.remaining_quantity =
-        (Number(prevFG.estimated_quantity) || 0) - (Number(currFG.produced_quantity) || 0);
+        (Number(prevFG.remaining_quantity
+        ) || 0) - (Number(currFG.produced_quantity) || 0);
     }
 
   }
@@ -405,7 +407,7 @@ exports.update = async (req, res) => {
   // If any changes detected and status is not "production started", set to "work in progress"
 
 
-  if (hasChanges && (productionProcess.status === "production started" || productionProcess.status === "production paused")) {
+  if (hasChanges && (productionProcess.status === "production started" || productionProcess.status === "production paused" || productionProcess.status === "received" )) {
     productionProcess.status = "production in progress";
   } else if (
     productionProcess.status !== "production started" &&
@@ -841,17 +843,17 @@ exports.startProduction = async (req, res) => {
     process.productionStartedAt = new Date();
     await process.save();
 
-  res.status(200).json({
-    success: true,
-    message: "Production started successfully",
-    process,
-  });
-  if (global.io) {
-    global.io.emit("processStatusUpdated", {
-      id: String(process._id),
-      status: process.status,
+    res.status(200).json({
+      success: true,
+      message: "Production started successfully",
+      process,
     });
-  }
+    if (global.io) {
+      global.io.emit("processStatusUpdated", {
+        id: String(process._id),
+        status: process.status,
+      });
+    }
   } catch (error) {
     console.error("Error in startProduction:", error);
     res.status(500).json({

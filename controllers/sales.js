@@ -416,13 +416,32 @@ exports.AddToken = TryCatch(async (req, res) => {
 });
 
 
+exports.markProductionCompleted = TryCatch(async (req, res) => {
+  const { id } = req.params;
+  const updated = await Purchase.findByIdAndUpdate(
+    id,
+    { salestatus: "Production Completed" },
+    { new: true }
+  );
+  if (!updated) {
+    throw new ErrorHandler("Sale not found", 404);
+  }
+  return res.status(200).json({ success: true, message: "Order marked as production completed" });
+});
+
 exports.getUpcomingSales = TryCatch(async (req, res) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
   const skip = (page - 1) * limit;
 
   const data = await Purchase.aggregate([
-    { $match: { approved: true } },
+    { $match: { 
+      approved: true,
+      $or: [
+        { salestatus: { $ne: "Production Completed" } },
+        { salestatus: { $exists: false } }
+      ]
+    } },
     {
       $lookup: {
         from: "parties",
@@ -516,7 +535,13 @@ exports.getUpcomingSales = TryCatch(async (req, res) => {
     .limit(limit)
     .exec();
 
-  const total = await Purchase.countDocuments({ approved: true });
+  const total = await Purchase.countDocuments({ 
+    approved: true,
+    $or: [
+      { salestatus: { $ne: "Production Completed" } },
+      { salestatus: { $exists: false } }
+    ]
+  });
 
   return res.status(200).json({
     success: true,

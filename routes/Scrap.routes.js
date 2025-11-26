@@ -13,6 +13,7 @@ routes.route("/delete/:id").delete(ScrapMaterial.prototype.deleteScrapMaterial);
 routes.route("/update/:id").put(ScrapMaterial.prototype.updateScrapMaterial);
 routes.route("/filter").get(ScrapMaterial.prototype.FilterScrapMaterial);
 routes.route("/bulk-upload").post(upload.single("excel"), ScrapMaterial.prototype.BulkCreateScrap)
+routes.route("/get/:id").post( ScrapMaterial.prototype.FindWithId)
 
 
 module.exports = { ScrapRoutes: routes }
