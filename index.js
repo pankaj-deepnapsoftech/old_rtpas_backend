@@ -38,6 +38,7 @@ const io = socketIo(server, {
       "http://localhost:5173",
       "https://inventory.deepmart.shop",
       "https://sopasb2b.deepmart.shop",
+      "https://testing.rtpas.in",
     ],
     methods: ["GET", "POST"],
     allowedHeaders: ["Authorization", "Content-Type"],
@@ -55,7 +56,8 @@ const allowedOrigins = [
   "http://localhost:5173",
   "https://inventory.deepmart.shop",
   "https://sopasb2b.deepmart.shop",
-  "https://rtpas.deepnapsoftech.com"
+  "https://rtpas.deepnapsoftech.com",
+  "https://testing.rtpas.in",
 ];
 
 const corsOptions = {
