@@ -333,6 +333,11 @@ exports.update = async (req, res) => {
       productionProcess.finished_good.remaining_quantity =
         (Number(prevFG.remaining_quantity
         ) || 0) - (Number(currFG.produced_quantity) || 0);
+
+
+      productionProcess.finished_good.final_produce_quantity += Number(currFG.produced_quantity) || 0;
+
+
     }
 
   }
@@ -407,7 +412,7 @@ exports.update = async (req, res) => {
   // If any changes detected and status is not "production started", set to "work in progress"
 
 
-  if (hasChanges && (productionProcess.status === "production started" || productionProcess.status === "production paused" || productionProcess.status === "received" )) {
+  if (hasChanges && (productionProcess.status === "production started" || productionProcess.status === "production paused" || productionProcess.status === "received")) {
     productionProcess.status = "production in progress";
   } else if (
     productionProcess.status !== "production started" &&
@@ -539,8 +544,7 @@ exports.receiveByInventory = async (req, res) => {
     }
 
     // Step 2: Update process status
-    process.status = "received";
-    await process.save();
+ 
 
     // Step 3: Find finished good
     if (!process.finished_good) {
@@ -563,7 +567,7 @@ exports.receiveByInventory = async (req, res) => {
       return res.status(404).json({ message: "Finished product not found" });
     }
 
-    const quantityRaw = bomFinishedMaterial.produced_quantity;
+    const quantityRaw = bomFinishedMaterial.final_produce_quantity;
     const quantityToAdd = Number(quantityRaw);
     // console.log(bomFinishedMaterial)
 
@@ -578,9 +582,11 @@ exports.receiveByInventory = async (req, res) => {
     finishedProduct.current_stock = currentStock + quantityToAdd;
     finishedProduct.change_type = "increase";
     finishedProduct.quantity_changed = quantityToAdd;
-
+    bomFinishedMaterial.final_produce_quantity = 0 ;
+    bomFinishedMaterial.inventory_last_changes_quantity += Number(quantityToAdd) ;
     await finishedProduct.save();
-
+    process.status = "received";
+    await process.save();
     // Success
     res.status(200).json({
       message: "Finished goods received by inventory and stock updated successfully",

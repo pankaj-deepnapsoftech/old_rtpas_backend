@@ -144,6 +144,14 @@ const productionProcessSchema = new Schema(
         type: Number,
         default: 0,
       },
+      final_produce_quantity: {
+        type: Number,
+        default: 0,
+      },
+      inventory_last_changes_quantity: {
+        type: Number,
+        default: 0,
+      },
     },
   },
   {
