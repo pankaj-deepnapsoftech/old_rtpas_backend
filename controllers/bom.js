@@ -674,6 +674,8 @@ exports.update = TryCatch(async (req, res) => {
     if (hasApprovalPermission) {
       bom.approved_by = req.user._id;
       bom.approved = true;
+    } else {
+      bom.approved = false;
     }
   }
 
@@ -1817,8 +1819,12 @@ exports.getInventoryShortages = TryCatch(async (req, res) => {
 });
 
 exports.allRawMaterialsForInventory = TryCatch(async (req, res) => {
+  // Fetch all raw materials with proper population
   const allRawMaterials = await BOMRawMaterial.find()
-    .populate("item")
+    .populate({
+      path: "item",
+      select: "product_id name inventory_category uom category current_stock price approved item_type product_or_service store"
+    })
     .populate({
       path: "bom",
       select: "bom_name production_process",
@@ -1826,9 +1832,6 @@ exports.allRawMaterialsForInventory = TryCatch(async (req, res) => {
         {
           path: "production_process",
           select: "status",
-        },
-        {
-          path: "raw_materials.item",
         },
       ],
     });
@@ -1847,37 +1850,72 @@ exports.allRawMaterialsForInventory = TryCatch(async (req, res) => {
     const bom = rm.bom;
     const item = rm.item;
 
-    if (!bom || !item || !bom.production_process) continue;
+    // Skip if essential data is missing
+    if (!bom || !item) {
+      continue;
+    }
 
-    const productionProcess = await ProductionProcess.findById(bom.production_process);
-    if (!productionProcess) continue;
+    // Check if BOM has a production_process (either populated object or ObjectId)
+    let productionProcess = null;
+    
+    if (bom.production_process) {
+      // If it's already populated (object with status), use it
+      if (typeof bom.production_process === 'object' && bom.production_process !== null && bom.production_process.status) {
+        productionProcess = bom.production_process;
+      } else if (bom.production_process.toString) {
+        // If it's an ObjectId, fetch it
+        try {
+          productionProcess = await ProductionProcess.findById(bom.production_process);
+        } catch (error) {
+          // If fetch fails, skip this raw material
+          continue;
+        }
+      }
+    }
 
-    if (!allowedStatuses.includes(productionProcess.status)) continue;
+    // Only show raw materials that are part of a production process/pre-production
+    if (!productionProcess) {
+      continue;
+    }
 
+    // Only include if status is in allowed list
+    if (!allowedStatuses.includes(productionProcess.status)) {
+      continue;
+    }
+
+    // Add all raw material data to results
     results.push({
       _id: rm._id,
       bom_id: bom._id,
       bom_name: bom.bom_name,
       bom_status: productionProcess.status,
       production_process_id: productionProcess._id,
-      product_id: item.product_id,
-      name: item.name,
-      inventory_category: item.inventory_category,
-      uom: item.uom,
-      category: item.category,
-      current_stock: item.current_stock,
-      price: item.price,
-      approved: item.approved,
-      item_type: item.item_type,
-      product_or_service: item.product_or_service,
-      store: item.store,
+      product_id: item.product_id || "",
+      name: item.name || "",
+      inventory_category: item.inventory_category || "",
+      uom: item.uom || "",
+      category: item.category || "",
+      current_stock: item.current_stock || 0,
+      price: item.price || 0,
+      approved: item.approved || false,
+      item_type: item.item_type || "",
+      product_or_service: item.product_or_service || "",
+      store: item.store || "",
+      quantity: rm.quantity || 0, // Add quantity field
+      description: rm.description || "",
+      assembly_phase: rm.assembly_phase || "",
+      supplier: rm.supplier || "",
+      comments: rm.comments || "",
+      total_part_cost: rm.total_part_cost || 0,
       createdAt: rm.createdAt,
       updatedAt: rm.updatedAt,
       __v: rm.__v,
       change_type: rm.change_type,
       quantity_changed: rm.quantity_changed,
-      isInventoryApprovalClicked: rm.isInventoryApprovalClicked,
-      isOutForInventoryClicked: rm.isOutForInventoryClicked,
+      isInventoryApprovalClicked: rm.isInventoryApprovalClicked || false,
+      isOutForInventoryClicked: rm.isOutForInventoryClicked || false,
+      approvedByAdmin: rm.approvedByAdmin || false,
+      approvedByInventoryPersonnel: rm.approvedByInventoryPersonnel || false,
     });
   }
 
