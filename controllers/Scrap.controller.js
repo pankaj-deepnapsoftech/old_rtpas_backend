@@ -145,6 +145,24 @@ class ScrapMaterial {
                 error: error.message
             });
         }
+    };
+
+    async FindWithId(req,res){
+
+       try {
+         const {id} = req.params;
+         const find = await ScrapModel.findById(id);
+         return res.status(200).json({
+            data:find
+         })
+       } catch (error) {
+         console.error(error); // log error
+            res.status(500).json({
+                message: "Error get scrap materials",
+                error: error.message
+            });
+       }
+
     }
 
 }
