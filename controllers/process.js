@@ -191,8 +191,7 @@ exports.update = async (req, res) => {
     // RAW MATERIALS
     const prevRMs = productionProcess.raw_materials;
     const currRMs = bom.raw_materials;
-    console.log("here is it prevRms:: ", prevRMs);
-    console.log("here is it CURRrMs:: ", currRMs);
+
 
     await Promise.all(
       prevRMs.map(async (prevRm) => {
@@ -544,7 +543,7 @@ exports.receiveByInventory = async (req, res) => {
     }
 
     // Step 2: Update process status
- 
+
 
     // Step 3: Find finished good
     if (!process.finished_good) {
@@ -582,8 +581,8 @@ exports.receiveByInventory = async (req, res) => {
     finishedProduct.current_stock = currentStock + quantityToAdd;
     finishedProduct.change_type = "increase";
     finishedProduct.quantity_changed = quantityToAdd;
-    bomFinishedMaterial.final_produce_quantity = 0 ;
-    bomFinishedMaterial.inventory_last_changes_quantity += Number(quantityToAdd) ;
+    bomFinishedMaterial.final_produce_quantity = 0;
+    bomFinishedMaterial.inventory_last_changes_quantity += Number(quantityToAdd);
     await finishedProduct.save();
     process.status = "received";
     await process.save();
@@ -886,16 +885,19 @@ exports.markDone = TryCatch(async (req, res) => {
     if (!material.item) return;
 
     const incQty = Number(material.remaining_quantity || 0);
+    console.log("DR", incQty)
+    if (incQty !== 0) {
 
-    return Product.findByIdAndUpdate(
-      material.item._id,
-      {
-        $inc: { current_stock: incQty },
-        change_type: "increase",
-        quantity_changed: incQty
-      },
-      { new: true }
-    );
+      return Product.findByIdAndUpdate(
+        material.item._id,
+        {
+          $inc: { current_stock: incQty },
+          change_type: "increase",
+          quantity_changed: incQty
+        },
+        { new: true }
+      );
+    }
   });
 
   await Promise.all(updatePromises);
