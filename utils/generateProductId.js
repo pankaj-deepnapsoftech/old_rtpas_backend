@@ -37,27 +37,22 @@ async function generateProductId(category) {
     const normalized = category.toLowerCase();
     const prefix = generateDynamicPrefix(normalized);
 
-    // Example: ELE001 (ELE = prefix, 001 = number)
     const regex = new RegExp(`^${prefix}(\\d{3})$`, "i");
+    const existing = await Product.find({ product_id: { $regex: regex } }, { product_id: 1 });
 
-    // Fetch only last created product matching the prefix
-    const lastProduct = await Product.findOne({
-      product_id: { $regex: regex }
-    }).sort({ createdAt: -1 });
-
-    let nextSeq = 1;
-
-    if (lastProduct) {
-      const match = lastProduct.product_id.match(regex);
+    let maxSeq = 0;
+    for (const item of existing) {
+      const match = String(item.product_id).match(/(\d+)$/);
       if (match && match[1]) {
-        nextSeq = parseInt(match[1]) + 1; // increment last ID
+        const num = parseInt(match[1], 10);
+        if (!Number.isNaN(num) && num > maxSeq) maxSeq = num;
       }
     }
 
+    const nextSeq = maxSeq + 1;
     const padded = String(nextSeq).padStart(3, "0");
     const newId = `${prefix}${padded}`;
 
-    console.log("Generated Product ID:", newId);
     return newId;
 
   } catch (error) {
