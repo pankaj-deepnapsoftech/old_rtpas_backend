@@ -109,30 +109,39 @@ exports.unapproved = TryCatch(async (req, res) => {
     unapproved: stores,
   });
 });
-exports.bulkUploadHandler = async (req, res) => {
-  csv()
-    .fromFile(req.file.path)
-    .then(async (response) => {
-      try {
-        fs.unlink(req.file.path, () => {});
+exports.bulkUploadHandler = TryCatch(async (req, res) => {
+  if (!req.file) {
+    throw new ErrorHandler("No file uploaded", 400);
+  }
 
-        await checkStoreCsvValidity(response);
+  try {
+    const response = await csv().fromFile(req.file.path);
+    
+    fs.unlink(req.file.path, () => {});
 
-        const stores = response;
+    await checkStoreCsvValidity(response);
 
-        await Store.insertMany(stores);
+    const shouldAutoApprove = req.user?.isSuper || 
+      (Array.isArray(req.user?.role?.permissions) && 
+       req.user.role.permissions.includes("approval"));
 
-        res.status(200).json({
-          status: 200,
-          success: true,
-          message: "Stores has been added successfully",
-        });
-      } catch (error) {
-        return res.status(400).json({
-          status: 400,
-          success: false,
-          message: error?.message,
-        });
-      }
+    const stores = response.map(store => ({
+      ...store,
+      approved: shouldAutoApprove
+    }));
+
+    const insertedStores = await Store.insertMany(stores);
+
+    res.status(200).json({
+      status: 200,
+      success: true,
+      message: `${insertedStores.length} stores have been added successfully`,
+      count: insertedStores.length,
     });
-};
+  } catch (error) {
+    if (req.file && req.file.path) {
+      fs.unlink(req.file.path, () => {});
+    }
+    throw new ErrorHandler(error?.message || "Failed to process bulk upload", 400);
+  }
+});
