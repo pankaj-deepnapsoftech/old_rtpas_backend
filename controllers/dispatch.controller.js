@@ -12,10 +12,12 @@ exports.CreateDispatch = TryCatch(async (req, res) => {
   });
 
   if (find) {
-    throw new ErrorHandler(
-      "Dispatch already created for this sales order",
-      400
-    );
+    const result = await DispatchModel.findOneAndUpdate(find._id, { $inc: { dispatch_qty: data.dispatch_qty } },{new:true})
+    return res.status(201).json({
+      message: "Dispatch created successfully, stock updated",
+      data: result,
+    });
+    
   }
 
   if (!data.sales_order_id) {
@@ -62,15 +64,15 @@ exports.GetAllDispatches = TryCatch(async (req, res) => {
 
   // Build filter object
   const filter = {};
-  
+
   if (dispatch_status && dispatch_status !== "All") {
     filter.dispatch_status = dispatch_status;
   }
-  
+
   if (payment_status && payment_status !== "All") {
     filter.payment_status = payment_status;
   }
-  
+
   if (search) {
     filter.$or = [
       { merchant_name: { $regex: search, $options: 'i' } },
@@ -244,7 +246,7 @@ exports.UpdateDispatch = TryCatch(async (req, res) => {
   });
 
   return res.status(200).json({
-    message: data.dispatch_qty !== undefined && data.dispatch_qty !== existingDispatch.dispatch_qty 
+    message: data.dispatch_qty !== undefined && data.dispatch_qty !== existingDispatch.dispatch_qty
       ? "Dispatch updated successfully, inventory adjusted, status changed to Dispatch Pending"
       : "Dispatch updated successfully, inventory adjusted",
     data: updatedDispatch,
@@ -419,4 +421,10 @@ exports.Stats = TryCatch(async (req, res) => {
       pendingCount,
     },
   });
+});
+
+exports.getDispatchQty = TryCatch(async (req, res) => {
+  const { id } = req.params;
+  const data = await DispatchModel.find({ sales_order_id: id }).select("")
+  return
 });

@@ -66,7 +66,7 @@ exports.unapproved = TryCatch(async (req, res) => {
         localField: "product_id",
         foreignField: "_id",
         as: "product_id",
-        pipeline: [{ $project: { name: 1, price: 1, uom: 1, current_stock:1 } }],
+        pipeline: [{ $project: { name: 1, price: 1, uom: 1, current_stock: 1 } }],
       },
     },
     {
@@ -78,16 +78,16 @@ exports.unapproved = TryCatch(async (req, res) => {
         pipeline: [{ $project: { company_name: 1, consignee_name: 1 } }],
       },
     },
- 
+
 
     { $unwind: { path: "$party", preserveNullAndEmptyArrays: true } },
     {
-      $project: { 
+      $project: {
         order_id: 1,
         product_qty: 1,
         GST: 1,
         price: 1,
-        product_id: 1,  
+        product_id: 1,
         party: 1,
         createdAt: 1,
 
@@ -298,9 +298,9 @@ exports.getAll = TryCatch(async (req, res) => {
               cust_id: 1,
               company_name: 1,
               bill_to: 1,
-              bill_gst_to:1,
-              shipped_gst_to:1,
-              shipped_to:1,
+              bill_gst_to: 1,
+              shipped_gst_to: 1,
+              shipped_to: 1,
             },
           },
         ],
@@ -318,7 +318,7 @@ exports.getAll = TryCatch(async (req, res) => {
         localField: "_id",
         foreignField: "sale_id",
         as: "assinedto",
-        pipeline: [ 
+        pipeline: [
           {
             $lookup: {
               from: "users",
@@ -435,13 +435,15 @@ exports.getUpcomingSales = TryCatch(async (req, res) => {
   const skip = (page - 1) * limit;
 
   const data = await Purchase.aggregate([
-    { $match: { 
-      approved: true,
-      $or: [
-        { salestatus: { $ne: "Production Completed" } },
-        { salestatus: { $exists: false } }
-      ]
-    } },
+    {
+      $match: {
+        approved: true,
+        $or: [
+          { salestatus: { $ne: "Production Completed" } },
+          { salestatus: { $exists: false } }
+        ]
+      }
+    },
     {
       $lookup: {
         from: "parties",
@@ -535,7 +537,7 @@ exports.getUpcomingSales = TryCatch(async (req, res) => {
     .limit(limit)
     .exec();
 
-  const total = await Purchase.countDocuments({ 
+  const total = await Purchase.countDocuments({
     approved: true,
     $or: [
       { salestatus: { $ne: "Production Completed" } },
@@ -808,4 +810,63 @@ exports.Delivered = TryCatch(async (req, res) => {
       message: err,
     });
   }
+});
+
+
+exports.GetAllSalesData = TryCatch(async (req, res) => {
+  let { page, limit } = req.query;
+  page = parseInt(page) || 1;
+  limit = parseInt(limit) || 10;
+  const skip = (page - 1) * limit;
+  const data = await Purchase.aggregate([
+    { $match: { salestatus: { $in: ["Production Completed", "Dispatch"] } } },
+    {
+      $lookup: {
+        from: "parties",
+        localField: "party",
+        foreignField: "_id",
+        as: "party",
+        pipeline: [
+          {
+            $project: { consignee_name: 1,company_name:1 }
+          }
+        ]
+      }
+    },
+    {
+      $lookup: {
+        from: "products",
+        localField: "product_id",
+        foreignField: "_id",
+        as: "product_id",
+        pipeline: [
+          {
+            $project: { name: 1,current_stock:1 }
+          }
+        ]
+      }
+
+    },
+    {
+      $addFields:{
+        party:{ $arrayElemAt: ["$party", 0]},
+        product_id:{ $arrayElemAt: ["$product_id", 0]},
+
+      }
+    },
+    {
+      $project:{
+        order_id:1,
+        party:1,
+        product_id:1,
+        product_qty:1,
+        salestatus:1,
+        price:1
+      }
+    }
+
+  ]).sort({ _id: -1 }).skip(skip).limit(limit);
+  res.status(200).json({
+    data
+  })
 });

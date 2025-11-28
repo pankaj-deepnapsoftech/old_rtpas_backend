@@ -13,6 +13,7 @@ const {
   bulkApprove,
   getUpcomingSales,
   markProductionCompleted,
+  GetAllSalesData,
 } = require("../controllers/sales");
 const { isAuthenticated } = require("../middlewares/isAuthenticated");
 const { isSuper } = require("../middlewares/isSuper");
@@ -56,5 +57,6 @@ router.post("/bulk-approve", isAuthenticated, bulkApprove);
 router.patch("/mark-completed/:id", isAuthenticated, markProductionCompleted);
 
 router.patch("/delivery/:id", Imageupload.single("delivery"), Delivered);
+router.route("/sales-dispatch").get(isAuthenticated,GetAllSalesData)
 module.exports = router;
 //

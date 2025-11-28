@@ -74,5 +74,6 @@ routes
 routes.route("/download/:id/:type").get(isAuthenticated, DownloadFile);
 
 routes.route("/dispatch-stats").get(isAuthenticated, Stats);
+routes.route("/get_all_dispatch_with_id/:id").get()
 
 module.exports = routes;

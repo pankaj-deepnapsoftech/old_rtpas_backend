@@ -23,6 +23,7 @@ const {
   removeFromInventoryShortages,
   updateShortageQuantity,
   updateStockAndShortages,
+  availabilQty,
 } = require("../controllers/product");
 const { isAuthenticated } = require("../middlewares/isAuthenticated");
 const { isSuper } = require("../middlewares/isSuper");

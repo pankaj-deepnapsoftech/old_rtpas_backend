@@ -48,7 +48,7 @@ const Purchases = new Schema(
     half_payment_status: { type: String },
     half_payment_image: { type: String },
 
-    salestatus: { type: String, trim: true },
+    salestatus: { type: String, trim: true,enum:["Production Completed","Dispatch"] },
     salestatus_comment: { type: String, trim: true },
     dispatcher_order_ss: { type: String, trim: true },
     customer_invoice_comment: { type: String, trim: true },

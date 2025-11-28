@@ -1495,3 +1495,6 @@ exports.updateStockAndShortages = TryCatch(async (req, res) => {
     shortageUpdate: shortageUpdateResult
   });
 });
+
+
+
