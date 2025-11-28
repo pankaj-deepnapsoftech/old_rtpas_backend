@@ -693,7 +693,7 @@ exports.downloadSampleTemplate = TryCatch(async (req, res) => {
       mrp: 1200,
       dealer_price: 1100,
       distributor_price: 1050,
-      store: "Faridabad",
+      store: "Faridabad Store",
     },
     {
       inventory_category: "direct",
@@ -710,7 +710,7 @@ exports.downloadSampleTemplate = TryCatch(async (req, res) => {
       mrp: 600,
       dealer_price: 550,
       distributor_price: 525,
-      store: "Faridabad",
+      store: "Faridabad Store",
     },
     {
       inventory_category: "direct",
@@ -731,7 +731,7 @@ exports.downloadSampleTemplate = TryCatch(async (req, res) => {
       mrp: 900,
       dealer_price: 850,
       distributor_price: 800,
-      store: "Faridabad",
+      store: "Faridabad Store",
     },
   ];
 
@@ -801,7 +801,7 @@ exports.exportToExcelIndirect = TryCatch(async (req, res) => {
       .populate("store", "name");
   }
 
-  const excelData = products.map((product) => ({
+  const excelData = products.map((product) => ({    
     "Inventory Category": product.inventory_category || "N/A",
     "Product Name": product.name || "N/A",
     "Product Color": product.color_name || "N/A",
@@ -809,7 +809,7 @@ exports.exportToExcelIndirect = TryCatch(async (req, res) => {
     Store: product.store?.name || product.store || "N/A",
     UOM: product.uom || "N/A",
     Category: product.category || "N/A",
-    "Current Stock": product.current_stock || 0,
+    "Current Stock": product.current_stock || 0, 
     "Min Stock": product.min_stock || "N/A",
     "Max Stock": product.max_stock || "N/A",
     Price: product.price || 0,

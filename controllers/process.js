@@ -306,25 +306,26 @@ exports.update = async (req, res) => {
 
   // Check if finished good quantities changed
 
-  console.log(
-    "Object.keys length:",
-    bom?.finished_good ? Object.keys(bom.finished_good).length : 0
-  );
+  // console.log(
+  //   "Object.keys length:",
+  //   bom?.finished_good ? Object.keys(bom.finished_good).length : 0
+  // );
 
   if (bom?.finished_good && Object.keys(bom.finished_good).length > 0) {
     const prevFG = productionProcess.finished_good;
     const currFG = bom.finished_good;
 
-
+    console.log("p",prevFG)
+    console.log("C", currFG)
 
 
     if (
-      currFG.produced_quantity !== undefined &&
-      prevFG.produced_quantity !== currFG.produced_quantity
+      // currFG.produced_quantity !== undefined &&
+      prevFG.produced_quantity === currFG.produced_quantity || prevFG.produced_quantity !== currFG.produced_quantity
     ) {
-      hasChanges = true;
+      // hasChanges = true;
       console.log("Finished good change detected!");
-
+        
 
       productionProcess.finished_good.produced_quantity = Number(currFG.produced_quantity) || 0;
 
@@ -346,29 +347,29 @@ exports.update = async (req, res) => {
 
   if (Array.isArray(bom?.raw_materials)) {
     bom.raw_materials.forEach((currRm, index) => {
-      console.log(`Raw material ${index}:`, currRm);
+     
       const prevRm = productionProcess.raw_materials.find(
         (item) => item?.item + "" === currRm?.item + ""
       );
 
-      console.log(`prevRm for ${index}:`, prevRm);
-      console.log(`currRm.used_quantity:`, currRm.used_quantity);
+      // console.log(`prevRm for ${index}:`, prevRm);
+      // console.log(`currRm.used_quantity:`, currRm.used_quantity);
 
       // Convert used_quantity to number and check if it changed
       if (prevRm && currRm.used_quantity !== undefined) {
         const prevUsedQty = Number(prevRm.used_quantity) || 0;
         const currUsedQty = Number(currRm.used_quantity) || 0;
 
-        console.log(`prevUsedQty: ${prevUsedQty}, currUsedQty: ${currUsedQty}`);
+        // console.log(`prevUsedQty: ${prevUsedQty}, currUsedQty: ${currUsedQty}`);
 
         if (prevUsedQty !== currUsedQty) {
           hasChanges = true;
           console.log(`Raw material ${index} change detected!`);
 
-          // ✅ Update actual value
+       
           prevRm.used_quantity = currUsedQty;
 
-          // ✅ Also update remaining_quantity
+        
           prevRm.remaining_quantity =
             (Number(prevRm.estimated_quantity) || 0) - currUsedQty;
         }
@@ -419,16 +420,16 @@ exports.update = async (req, res) => {
     status.trim() !== ""
   ) {
     productionProcess.status = status;
-    console.log("Status changed to:", status);
+    // console.log("Status changed to:", status);
   } else {
-    console.log("No status change needed");
+    // console.log("No status change needed");
   }
 
   // Mark nested updates 
   productionProcess.markModified("finished_good");
   productionProcess.markModified("raw_materials");
   productionProcess.markModified("scrap_materials");
-  console.log("production process status", productionProcess);
+  // console.log("production process status", productionProcess);
   await productionProcess.save();
 
 
