@@ -459,6 +459,7 @@ exports.update = TryCatch(async (req, res) => {
 
     raw_materials.forEach((material) => {
       if (material._id) {
+
         // Update existing
         bulkRawMaterialOps.push({
           updateOne: {
@@ -478,13 +479,15 @@ exports.update = TryCatch(async (req, res) => {
         });
       } else {
         // Create new
+         
         newRawMaterials.push({
           ...material,
           bom: bom._id,
         });
       }
     });
-
+    
+    console.log("heyy", newRawMaterials)
     // Execute bulk operations
     if (bulkRawMaterialOps.length > 0) {
       await BOMRawMaterial.bulkWrite(bulkRawMaterialOps);
@@ -500,6 +503,7 @@ exports.update = TryCatch(async (req, res) => {
       ...raw_materials.filter((m) => m._id).map((m) => m._id),
       ...createdRawMaterials.map((m) => m._id),
     ];
+    bom.raw_materials = allRawMaterialIds;
     const processedRawMaterials = await BOMRawMaterial.find({
       _id: { $in: allRawMaterialIds },
     });
