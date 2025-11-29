@@ -15,7 +15,7 @@ exports.CreateDispatch = TryCatch(async (req, res) => {
 
 
 
-  if (find[0].quantity - remaningOrder < data?.dispatch_qty) {
+  if (find[0]?.quantity - remaningOrder < data?.dispatch_qty) {
     throw new ErrorHandler("Dispatch qty is not valid according to order", 400);
   }
 

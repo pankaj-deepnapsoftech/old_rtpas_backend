@@ -818,6 +818,9 @@ exports.GetAllSalesData = TryCatch(async (req, res) => {
   page = parseInt(page) || 1;
   limit = parseInt(limit) || 10;
   const skip = (page - 1) * limit;
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
   let data = await Purchase.aggregate([
     { $match: { salestatus: { $in: ["Production Completed", "Dispatch"] } } },
     {
@@ -888,7 +891,7 @@ exports.GetAllSalesData = TryCatch(async (req, res) => {
   data = data.map((item) => {
     let remaning = 0;
     if (item.salestatus === "Production Completed" && item?.dispatch) {
-      remaning = item?.product_qty - item.dispatch.reduce((i,result) => i+result.dispatch_qty,0);  
+      remaning = item?.product_qty - item.dispatch.reduce((i, result) => i + result.dispatch_qty, 0);
     } else {
       remaning = item?.product_qty
     }
@@ -896,9 +899,14 @@ exports.GetAllSalesData = TryCatch(async (req, res) => {
     return { ...item, pending_qty: remaning };
 
   })
+
+  const totaldata = await Purchase.find({ salestatus: { $in: ["Production Completed", "Dispatch"] } }).countDocuments()
+
   res.status(200).json({
-    data
+    data,
+    totalPage:Math.ceil(totaldata/limit),
   })
+  session.endSession()
 });
 
 exports.GetAllPendingSalesData = TryCatch(async (req, res) => {
@@ -906,6 +914,10 @@ exports.GetAllPendingSalesData = TryCatch(async (req, res) => {
   page = parseInt(page) || 1;
   limit = parseInt(limit) || 10;
   const skip = (page - 1) * limit;
+
+  const session = await mongoose.startSession();
+   session.startTransaction()
+
   let data = await Purchase.aggregate([
     { $match: { salestatus: { $in: ["Production Completed"] } } },
     {
@@ -976,17 +988,22 @@ exports.GetAllPendingSalesData = TryCatch(async (req, res) => {
   data = data.map((item) => {
     let remaning = 0;
     if (item.salestatus === "Production Completed" && item?.dispatch) {
-      remaning = item?.product_qty - item.dispatch.reduce((i,result) => i+result.dispatch_qty,0); 
+      remaning = item?.product_qty - item.dispatch.reduce((i, result) => i + result.dispatch_qty, 0);
     } else {
       remaning = item?.product_qty
     }
 
     return { ...item, pending_qty: remaning };
 
-  })
+  });
+
+  const totalPage = await Purchase.find( { salestatus: { $in: ["Production Completed"] } }).countDocuments();
+
   res.status(200).json({
-    data
+    data,
+    totalPage:Math.ceil(totalPage/limit),
   })
+  session.endSession()
 });
 
 exports.GetAllCompletedData = TryCatch(async (req, res) => {
@@ -994,6 +1011,11 @@ exports.GetAllCompletedData = TryCatch(async (req, res) => {
   page = parseInt(page) || 1;
   limit = parseInt(limit) || 10;
   const skip = (page - 1) * limit;
+
+    const session = await mongoose.startSession();
+   session.startTransaction()
+
+
   const data = await Purchase.aggregate([
     { $match: { salestatus: { $in: ["Dispatch"] } } },
     {
@@ -1043,16 +1065,21 @@ exports.GetAllCompletedData = TryCatch(async (req, res) => {
     }
 
   ]).sort({ _id: -1 }).skip(skip).limit(limit);
+
+  const totalPage = await Purchase.find( { salestatus: { $in: ["Dispatch"] } } ).countDocuments();
   res.status(200).json({
-    data
+    data,
+     totalPage:Math.ceil(totalPage/limit),
   })
+
+  session.endSession()
 });
 
 
 exports.GetAllSalesReadyToDispatch = TryCatch(async (req, res) => {
   let data = await Purchase.aggregate([
     {
-      $match: { salestatus: { $ne: "Dispatch" } }
+      $match: { salestatus: { $ne: "Dispatch" }, approved: true }
     },
     {
       $lookup: {
@@ -1086,7 +1113,7 @@ exports.GetAllSalesReadyToDispatch = TryCatch(async (req, res) => {
         ]
       }
     },
-       {
+    {
       $lookup: {
         from: "dispatches",
         foreignField: "order_id",
@@ -1116,7 +1143,7 @@ exports.GetAllSalesReadyToDispatch = TryCatch(async (req, res) => {
         product_qty: 1,
         price: 1,
         GST: 1,
-        dispatch:1
+        dispatch: 1
       }
     }
   ]);
@@ -1124,7 +1151,7 @@ exports.GetAllSalesReadyToDispatch = TryCatch(async (req, res) => {
   data = data.map((item) => {
     let remaning = 0;
     if (item?.dispatch) {
-      remaning = item?.product_qty - item.dispatch.reduce((i,result) => i+result.dispatch_qty,0); 
+      remaning = item?.product_qty - item.dispatch.reduce((i, result) => i + result.dispatch_qty, 0);
     } else {
       remaning = item?.product_qty
     }
