@@ -818,7 +818,7 @@ exports.GetAllSalesData = TryCatch(async (req, res) => {
   page = parseInt(page) || 1;
   limit = parseInt(limit) || 10;
   const skip = (page - 1) * limit;
-  const data = await Purchase.aggregate([
+  let data = await Purchase.aggregate([
     { $match: { salestatus: { $in: ["Production Completed", "Dispatch"] } } },
     {
       $lookup: {
@@ -828,7 +828,7 @@ exports.GetAllSalesData = TryCatch(async (req, res) => {
         as: "party",
         pipeline: [
           {
-            $project: { consignee_name: 1,company_name:1 }
+            $project: { consignee_name: 1, company_name: 1 }
           }
         ]
       }
@@ -841,31 +841,297 @@ exports.GetAllSalesData = TryCatch(async (req, res) => {
         as: "product_id",
         pipeline: [
           {
-            $project: { name: 1,current_stock:1 }
+            $project: { name: 1, current_stock: 1 }
           }
         ]
       }
 
     },
     {
-      $addFields:{
-        party:{ $arrayElemAt: ["$party", 0]},
-        product_id:{ $arrayElemAt: ["$product_id", 0]},
+      $lookup: {
+        from: "dispatches",
+        foreignField: "order_id",
+        localField: "order_id",
+        as: "dispatch",
+        pipeline: [
+          {
+            $project: {
+              dispatch_qty: 1,
+              quantity: 1,
+            }
+          }
+        ]
+      }
+    },
+    {
+      $addFields: {
+        party: { $arrayElemAt: ["$party", 0] },
+        product_id: { $arrayElemAt: ["$product_id", 0] },
 
       }
     },
     {
-      $project:{
-        order_id:1,
-        party:1,
-        product_id:1,
-        product_qty:1,
-        salestatus:1,
-        price:1
+      $project: {
+        order_id: 1,
+        party: 1,
+        product_id: 1,
+        product_qty: 1,
+        salestatus: 1,
+        price: 1,
+        GST: 1,
+        dispatch: 1,
       }
     }
 
   ]).sort({ _id: -1 }).skip(skip).limit(limit);
+
+  data = data.map((item) => {
+    let remaning = 0;
+    if (item.salestatus === "Production Completed" && item?.dispatch) {
+      remaning = item?.product_qty - item.dispatch.reduce((i,result) => i+result.dispatch_qty,0);  
+    } else {
+      remaning = item?.product_qty
+    }
+
+    return { ...item, pending_qty: remaning };
+
+  })
+  res.status(200).json({
+    data
+  })
+});
+
+exports.GetAllPendingSalesData = TryCatch(async (req, res) => {
+  let { page, limit } = req.query;
+  page = parseInt(page) || 1;
+  limit = parseInt(limit) || 10;
+  const skip = (page - 1) * limit;
+  let data = await Purchase.aggregate([
+    { $match: { salestatus: { $in: ["Production Completed"] } } },
+    {
+      $lookup: {
+        from: "parties",
+        localField: "party",
+        foreignField: "_id",
+        as: "party",
+        pipeline: [
+          {
+            $project: { consignee_name: 1, company_name: 1 }
+          }
+        ]
+      }
+    },
+    {
+      $lookup: {
+        from: "products",
+        localField: "product_id",
+        foreignField: "_id",
+        as: "product_id",
+        pipeline: [
+          {
+            $project: { name: 1, current_stock: 1 }
+          }
+        ]
+      }
+
+    },
+    {
+      $lookup: {
+        from: "dispatches",
+        foreignField: "order_id",
+        localField: "order_id",
+        as: "dispatch",
+        pipeline: [
+          {
+            $project: {
+              dispatch_qty: 1,
+              quantity: 1,
+            }
+          }
+        ]
+      }
+    },
+    {
+      $addFields: {
+        party: { $arrayElemAt: ["$party", 0] },
+        product_id: { $arrayElemAt: ["$product_id", 0] },
+
+      }
+    },
+    {
+      $project: {
+        order_id: 1,
+        party: 1,
+        product_id: 1,
+        product_qty: 1,
+        salestatus: 1,
+        price: 1,
+        GST: 1,
+        dispatch: 1,
+      }
+    }
+
+  ]).sort({ _id: -1 }).skip(skip).limit(limit);
+
+  data = data.map((item) => {
+    let remaning = 0;
+    if (item.salestatus === "Production Completed" && item?.dispatch) {
+      remaning = item?.product_qty - item.dispatch.reduce((i,result) => i+result.dispatch_qty,0); 
+    } else {
+      remaning = item?.product_qty
+    }
+
+    return { ...item, pending_qty: remaning };
+
+  })
+  res.status(200).json({
+    data
+  })
+});
+
+exports.GetAllCompletedData = TryCatch(async (req, res) => {
+  let { page, limit } = req.query;
+  page = parseInt(page) || 1;
+  limit = parseInt(limit) || 10;
+  const skip = (page - 1) * limit;
+  const data = await Purchase.aggregate([
+    { $match: { salestatus: { $in: ["Dispatch"] } } },
+    {
+      $lookup: {
+        from: "parties",
+        localField: "party",
+        foreignField: "_id",
+        as: "party",
+        pipeline: [
+          {
+            $project: { consignee_name: 1, company_name: 1 }
+          }
+        ]
+      }
+    },
+    {
+      $lookup: {
+        from: "products",
+        localField: "product_id",
+        foreignField: "_id",
+        as: "product_id",
+        pipeline: [
+          {
+            $project: { name: 1, current_stock: 1 }
+          }
+        ]
+      }
+
+    },
+    {
+      $addFields: {
+        party: { $arrayElemAt: ["$party", 0] },
+        product_id: { $arrayElemAt: ["$product_id", 0] },
+
+      }
+    },
+    {
+      $project: {
+        order_id: 1,
+        party: 1,
+        product_id: 1,
+        product_qty: 1,
+        salestatus: 1,
+        price: 1,
+        GST: 1,
+      }
+    }
+
+  ]).sort({ _id: -1 }).skip(skip).limit(limit);
+  res.status(200).json({
+    data
+  })
+});
+
+
+exports.GetAllSalesReadyToDispatch = TryCatch(async (req, res) => {
+  let data = await Purchase.aggregate([
+    {
+      $match: { salestatus: { $ne: "Dispatch" } }
+    },
+    {
+      $lookup: {
+        from: "parties",
+        localField: "party",
+        foreignField: "_id",
+        as: "party",
+        pipeline: [
+          {
+            $project: {
+              consignee_name: 1,
+              company_name: 1,
+            }
+          }
+        ]
+      }
+    },
+    {
+      $lookup: {
+        from: "products",
+        localField: "product_id",
+        foreignField: "_id",
+        as: "product_id",
+        pipeline: [
+          {
+            $project: {
+              current_stock: 1,
+              name: 1,
+            }
+          }
+        ]
+      }
+    },
+       {
+      $lookup: {
+        from: "dispatches",
+        foreignField: "order_id",
+        localField: "order_id",
+        as: "dispatch",
+        pipeline: [
+          {
+            $project: {
+              dispatch_qty: 1,
+              quantity: 1,
+            }
+          }
+        ]
+      }
+    },
+    {
+      $addFields: {
+        party: { $arrayElemAt: ["$party", 0] },
+        product_id: { $arrayElemAt: ["$product_id", 0] },
+      }
+    },
+    {
+      $project: {
+        party: 1,
+        order_id: 1,
+        product_id: 1,
+        product_qty: 1,
+        price: 1,
+        GST: 1,
+        dispatch:1
+      }
+    }
+  ]);
+
+  data = data.map((item) => {
+    let remaning = 0;
+    if (item?.dispatch) {
+      remaning = item?.product_qty - item.dispatch.reduce((i,result) => i+result.dispatch_qty,0); 
+    } else {
+      remaning = item?.product_qty
+    }
+
+    return { ...item, pending_qty: remaning };
+
+  })
   res.status(200).json({
     data
   })
