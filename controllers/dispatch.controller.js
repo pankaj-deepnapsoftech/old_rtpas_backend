@@ -1,24 +1,45 @@
 const { DispatchModel } = require("../models/Dispatcher");
 const { TryCatch, ErrorHandler } = require("../utils/error");
-const ProductionProcess = require("../models/productionProcess");
-const mongoose = require("mongoose");
 const Product = require("../models/product");
+const { Purchase } = require("../models/purchase");
 
 exports.CreateDispatch = TryCatch(async (req, res) => {
   const data = req.body;
 
-  const find = await DispatchModel.findOne({
+
+  const find = await DispatchModel.find({
     sales_order_id: data.sales_order_id,
   });
 
-  if (find) {
-    const result = await DispatchModel.findOneAndUpdate(find._id, { $inc: { dispatch_qty: data.dispatch_qty } },{new:true})
-    return res.status(201).json({
-      message: "Dispatch created successfully, stock updated",
-      data: result,
-    });
-    
+  const remaningOrder = find.reduce((i, result) => i + result?.dispatch_qty, 0);
+
+
+
+  if (find[0]?.quantity - remaningOrder < data?.dispatch_qty) {
+    throw new ErrorHandler("Dispatch qty is not valid according to order", 400);
   }
+
+  // if (find) {
+  //   if(find?.quantity - find.dispatch_qty < data?.dispatch_qty){
+  //      throw new ErrorHandler("Dispatch qty is not valid according to order", 400);
+  //   }
+  //   const result = await DispatchModel.findOneAndUpdate(
+  //     { _id: find._id },
+  //     { $inc: { dispatch_qty: data.dispatch_qty } },
+  //     { new: true }
+  //   );
+
+
+  //   if (result?.quantity == result?.dispatch_qty) {
+  //     await Purchase.findByIdAndUpdate(result?.sales_order_id, { salestatus: "Dispatch" });
+  //   }
+
+  //   return res.status(201).json({
+  //     message: "Dispatch created successfully, stock updated",
+  //     data: result
+  //   });
+  // }
+
 
   if (!data.sales_order_id) {
     throw new ErrorHandler("Sales order ID is required", 400);
@@ -49,11 +70,16 @@ exports.CreateDispatch = TryCatch(async (req, res) => {
     dispatch_status: "Dispatch", // Set default status
   });
 
-  return res.status(201).json({
+  res.status(201).json({
     message: "Dispatch created successfully, stock updated",
     data: result,
     updated_stock: product.current_stock,
   });
+
+
+  if (result?.quantity - remaningOrder === result?.dispatch_qty) {
+    await Purchase.findByIdAndUpdate(result?.sales_order_id, { salestatus: "Dispatch" });
+  }
 });
 
 exports.GetAllDispatches = TryCatch(async (req, res) => {
