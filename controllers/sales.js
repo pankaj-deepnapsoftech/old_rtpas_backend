@@ -853,8 +853,8 @@ exports.GetAllSalesData = TryCatch(async (req, res) => {
     {
       $lookup: {
         from: "dispatches",
-        foreignField: "order_id",
-        localField: "order_id",
+        foreignField: "sales_order_id",
+        localField: "_id",
         as: "dispatch",
         pipeline: [
           {
@@ -905,7 +905,7 @@ exports.GetAllSalesData = TryCatch(async (req, res) => {
 
   res.status(200).json({
     data,
-    totalPage:Math.ceil(totaldata/limit),
+    totalPage: Math.ceil(totaldata / limit),
   })
   session.endSession()
 });
@@ -917,7 +917,7 @@ exports.GetAllPendingSalesData = TryCatch(async (req, res) => {
   const skip = (page - 1) * limit;
 
   const session = await mongoose.startSession();
-   session.startTransaction()
+  session.startTransaction()
 
   let data = await Purchase.aggregate([
     { $match: { salestatus: { $in: ["Production Completed"] } } },
@@ -999,11 +999,11 @@ exports.GetAllPendingSalesData = TryCatch(async (req, res) => {
 
   });
 
-  const totalPage = await Purchase.find( { salestatus: { $in: ["Production Completed"] } }).countDocuments();
+  const totalPage = await Purchase.find({ salestatus: { $in: ["Production Completed"] } }).countDocuments();
 
   res.status(200).json({
     data,
-    totalPage:Math.ceil(totalPage/limit),
+    totalPage: Math.ceil(totalPage / limit),
   })
   session.endSession()
 });
@@ -1014,8 +1014,8 @@ exports.GetAllCompletedData = TryCatch(async (req, res) => {
   limit = parseInt(limit) || 10;
   const skip = (page - 1) * limit;
 
-    const session = await mongoose.startSession();
-   session.startTransaction()
+  const session = await mongoose.startSession();
+  session.startTransaction()
 
 
   const data = await Purchase.aggregate([
@@ -1068,10 +1068,10 @@ exports.GetAllCompletedData = TryCatch(async (req, res) => {
 
   ]).sort({ _id: -1 }).skip(skip).limit(limit);
 
-  const totalPage = await Purchase.find( { salestatus: { $in: ["Dispatch"] } } ).countDocuments();
+  const totalPage = await Purchase.find({ salestatus: { $in: ["Dispatch"] } }).countDocuments();
   res.status(200).json({
     data,
-     totalPage:Math.ceil(totalPage/limit),
+    totalPage: Math.ceil(totalPage / limit),
   })
 
   session.endSession()
@@ -1174,7 +1174,7 @@ exports.directSendToDispatch = TryCatch(async (req, res) => {
 
   const data = await Purchase.findByIdAndUpdate(
     id,
-    { salestatus: status, approved:true },
+    { salestatus: status, approved: true },
     { new: true }
   );
 
