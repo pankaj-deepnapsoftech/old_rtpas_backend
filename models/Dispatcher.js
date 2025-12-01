@@ -12,7 +12,7 @@ const DispatchSchema = new mongoose.Schema(
       index: true,
       required: false,
     },
-    sales_order_id: { type: String, required: true },
+    sales_order_id: { type: mongoose.Schema.Types.ObjectId, ref: "purchase" , required: true },
     order_id: { type: String },
     merchant_name: { type: String },
     item_name: { type: String },

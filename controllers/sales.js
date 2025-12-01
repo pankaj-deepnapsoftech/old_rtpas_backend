@@ -888,6 +888,7 @@ exports.GetAllSalesData = TryCatch(async (req, res) => {
 
   ]).sort({ _id: -1 }).skip(skip).limit(limit);
 
+
   data = data.map((item) => {
     let remaning = 0;
     if (item.salestatus === "Production Completed" && item?.dispatch) {
@@ -950,8 +951,8 @@ exports.GetAllPendingSalesData = TryCatch(async (req, res) => {
     {
       $lookup: {
         from: "dispatches",
-        foreignField: "order_id",
-        localField: "order_id",
+        foreignField: "sales_order_id",
+        localField: "_id",
         as: "dispatch",
         pipeline: [
           {
@@ -984,6 +985,7 @@ exports.GetAllPendingSalesData = TryCatch(async (req, res) => {
     }
 
   ]).sort({ _id: -1 }).skip(skip).limit(limit);
+
 
   data = data.map((item) => {
     let remaning = 0;
