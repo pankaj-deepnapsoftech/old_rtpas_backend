@@ -85,6 +85,17 @@ exports.create = TryCatch(async (req, res) => {
   // bom.is_production_started = true;
   await bom.save();
 
+  // Reset inventory approval flags for this BOM so that a fresh approval
+  // request appears when a new pre-production is created for the same BOM.
+  await BOMRawMaterial.updateMany(
+    { bom: bom._id },
+    {
+      approvedByInventoryPersonnel: false,
+      isInventoryApprovalClicked: false,
+      isOutForInventoryClicked: false,
+    }
+  );
+
   res.status(200).json({
     status: 200,
     success: true,
