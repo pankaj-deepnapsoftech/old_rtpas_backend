@@ -1118,8 +1118,8 @@ exports.GetAllSalesReadyToDispatch = TryCatch(async (req, res) => {
     {
       $lookup: {
         from: "dispatches",
-        foreignField: "order_id",
-        localField: "order_id",
+        foreignField: "sales_order_id",
+        localField: "_id",
         as: "dispatch",
         pipeline: [
           {
