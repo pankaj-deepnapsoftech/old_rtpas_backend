@@ -17,6 +17,7 @@ const {
   GetAllSalesReadyToDispatch,
   GetAllPendingSalesData,
   GetAllCompletedData,
+  directSendToDispatch,
 } = require("../controllers/sales");
 const { isAuthenticated } = require("../middlewares/isAuthenticated");
 const { isSuper } = require("../middlewares/isSuper");
@@ -58,11 +59,12 @@ router.get("/upcoming-sales", isAuthenticated, getUpcomingSales);
 router.patch("/approve/:id", isAuthenticated, approve);
 router.post("/bulk-approve", isAuthenticated, bulkApprove);
 router.patch("/mark-completed/:id", isAuthenticated, markProductionCompleted);
-
+router.route('/sales-dispatch/:id').put(isAuthenticated, directSendToDispatch)
 router.patch("/delivery/:id", Imageupload.single("delivery"), Delivered);
 router.route("/sales-dispatch-all").get(isAuthenticated,GetAllSalesData);
 router.route("/sales-dispatch-pending").get(isAuthenticated,GetAllPendingSalesData);
 router.route("/sales-dispatch-completed").get(isAuthenticated,GetAllCompletedData);
 router.route("/get-all-order-pending").get(GetAllSalesReadyToDispatch)
+
 module.exports = router;
 //

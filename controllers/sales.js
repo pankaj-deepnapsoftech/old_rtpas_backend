@@ -1163,3 +1163,22 @@ exports.GetAllSalesReadyToDispatch = TryCatch(async (req, res) => {
     data
   })
 });
+
+
+
+exports.directSendToDispatch = TryCatch(async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+
+  const data = await Purchase.findByIdAndUpdate(
+    id,
+    { salestatus: status, approved:true },
+    { new: true }
+  );
+
+  res.status(200).json({
+    success: true,
+    data,
+    message: "Sales Order Move To Dispatch"
+  });
+}); 
