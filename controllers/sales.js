@@ -1181,6 +1181,7 @@ exports.directSendToDispatch = TryCatch(async (req, res) => {
   res.status(200).json({
     success: true,
     data,
-    message: "Sales Order Move To Dispatch"
+    message: "The sales order has been moved to dispatch."
+
   });
 }); 
