@@ -698,7 +698,7 @@ exports.details = TryCatch(async (req, res) => {
 exports.all = TryCatch(async (req, res) => {
   const productionProcesses = await ProductionProcess.find().populate(
     "rm_store fg_store scrap_store creator item bom"
-  );
+  ).sort({_id:-1});
   // console.log("prodcution proce", productionProcesses);
   res.status(200).json({
     status: 200,
