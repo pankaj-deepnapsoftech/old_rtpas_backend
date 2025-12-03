@@ -26,7 +26,8 @@ const DispatchRoute = require("./routes/Dispatch.routes");
 const PurchaseOrderRoutes = require("./routes/PurchaseOrder");
 const ResourceRoutes = require("./routes/resources");
 const DeviceDataRoutes = require('./routes/deviceData.routes');
-const {ScrapRoutes} = require("./routes/Scrap.routes")
+const {ScrapRoutes} = require("./routes/Scrap.routes");
+const subscriptionRoutes = require("./routes/subscription");
 
 const app = express();
 const server = http.createServer(app);
